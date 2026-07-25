@@ -35,6 +35,7 @@ The first target is Coolify/Docker hosts. TrueNAS is intentionally deferred unti
 - `docs/coolify-networking.md` — deploying the gateway inside each Coolify host.
 - `docs/node-contract.md` — local host capability contract.
 - `docs/security-model.md` — observer/operator/admin policy.
+- `docs/profiles.md` — MCP profiles and Unix identity separation.
 - `docs/operations.md` — rollout and verification checklist.
 - `deploy/coolify/` — deployment guidance.
 
