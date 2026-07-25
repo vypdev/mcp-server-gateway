@@ -60,16 +60,16 @@ MCP_HOST_ID=lab01
 
 Changing from observer to operator requires an external deployment or service-management action performed by an authorized administrator. The observer process must not be able to perform that transition.
 
-## Recommended deployment shape
+## Deployment shape
 
-For high-risk hosts, run separate instances/endpoints:
+Run one gateway instance per host. Select its profile at startup and keep that profile fixed for the lifetime of the process:
 
 ```text
-lab01-mcp-observer  → mcp-observer → read-only
-lab01-mcp-operator  → mcp-operator → observer + approved writes
+lab01-mcp-gateway → mcp-observer  → read-only
+lab01-mcp-gateway → mcp-operator  → observer + approved writes
 ```
 
-The operator endpoint should have stronger network restrictions and may require a separate client credential. A single operator instance is acceptable only when its endpoint, credentials, and host permissions are protected accordingly.
+The operator profile includes observer capabilities. The observer profile cannot activate operator capabilities, change its own profile, or restart itself with stronger privileges. Changing profile requires an external deployment or service-management action performed by an authorized administrator.
 
 ## Command execution
 
