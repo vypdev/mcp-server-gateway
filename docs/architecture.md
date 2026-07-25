@@ -1,35 +1,45 @@
 # Architecture
 
-## Components
+## Primary model: one gateway per host
 
-### Client agents
+`mcp-server-gateway` is deployed on the server it manages. Hermes and OpenClaw connect to each remote instance as MCP clients.
 
-Hermes and OpenClaw connect only to the gateway MCP endpoint. They do not receive Docker credentials, SSH private keys, UniFi credentials, or arbitrary host access.
+```text
+Hermes/OpenClaw on ai-core
+       │ private authenticated MCP/HTTPS
+       ├──────────────► MCP Gateway on NAS01
+       ├──────────────► MCP Gateway on Lab01
+       ├──────────────► MCP Gateway on another Coolify host
+       └──────────────► future MCP Gateway on TrueNAS
+```
 
-### Gateway
+There is no requirement for a central aggregator. A future aggregator could be added, but it is not part of the initial design.
 
-The gateway is the policy enforcement point. It should:
+## What a per-host gateway does
 
-- authenticate clients;
-- expose only registered node tools;
-- apply capability policy per client/agent;
-- route requests to nodes;
-- enforce timeouts and response limits;
-- attach correlation IDs;
-- record audit events without secrets;
-- return structured errors;
-- prevent cross-node credential leakage.
+A gateway instance is a local control plane for its own host. It can expose typed tools for:
 
-### Nodes
+- host status and metrics;
+- Docker container inventory and health;
+- local Coolify application status;
+- bounded service logs;
+- named healthchecks;
+- controlled deployments or restarts when explicitly enabled.
 
-A node is a small MCP server close to the system it observes or controls. Examples:
+Hermes/OpenClaw do not receive the host's SSH private key, Docker credentials, or arbitrary shell access.
 
-- `unifi-mcp` — UniFi inventory and health;
-- `host-mcp` — read-only host, Docker, systemd, and logs;
-- `coolify-mcp` — applications and deployments;
-- future `truenas-mcp` — TrueNAS storage and services.
+## Local adapters
 
-Nodes should not expose arbitrary shell execution. They should publish typed tools with explicit input schemas.
+The gateway may use host-local adapters internally:
+
+```text
+MCP Gateway on NAS01
+  ├── Docker/Coolify adapter
+  ├── host health adapter
+  └── future TrueNAS adapter
+```
+
+Those adapters do not need to be separate MCP servers. They are implementation modules behind one host-local MCP endpoint.
 
 ## Trust zones
 
@@ -37,35 +47,24 @@ Nodes should not expose arbitrary shell execution. They should publish typed too
 Zone A: agent clients
   Hermes / OpenClaw
 
-Zone B: gateway
-  authentication, routing, authorization, audit
+Zone B: private transport
+  authenticated network path to the target host
 
-Zone C: node network
-  Coolify services and private node endpoints
+Zone C: per-host gateway
+  authentication, authorization, audit, typed operations
 
-Zone D: infrastructure
-  UniFi, Docker, systemd, storage, controllers
+Zone D: target host
+  Docker, Coolify, services, systemd, storage
 ```
 
-The gateway may connect to Zone C, but clients must not bypass it to reach Zone D.
+The gateway is the only component that crosses from Zone C into the target host. Clients do not bypass it.
 
-## Request flow
+## Host-local execution
 
-```text
-1. Hermes/OpenClaw authenticates to gateway.
-2. Gateway maps client identity to capability profile.
-3. Gateway validates node and tool allowlists.
-4. Gateway forwards a typed MCP request to one node.
-5. Node validates its own local policy and upstream credentials.
-6. Gateway returns bounded structured data and records the audit event.
-```
+For Coolify-managed applications, prefer the Coolify API or a narrowly scoped Docker adapter. Mounting `/var/run/docker.sock` into a gateway container grants near-root control of the host and must not be the default.
 
-## Docker communication
-
-Same-host Coolify deployments may use an internal Docker network. Cross-host deployments must not rely on Docker bridge networks: those networks do not span hosts. Use a private routed network such as the existing lab VLAN, a VPN/Tailscale/WireGuard overlay, or an equivalent private transport.
-
-The public/reverse-proxy interface should expose only the gateway. Node MCP ports should remain private.
+For systemd and host-level operations, use a small host agent or a privileged, explicitly reviewed adapter. A normal unprivileged container cannot safely control host systemd merely because it runs on the same machine.
 
 ## Transport
 
-Use MCP Streamable HTTP for gateway-to-client and gateway-to-node communication. Avoid legacy SSE-only sessions for new nodes because a transport can appear connected while failing to deliver JSON-RPC responses after initialization.
+Use MCP Streamable HTTP over a private authenticated path. Avoid exposing legacy SSE-only endpoints publicly. Every host instance must support initialization, tools/list, repeated calls, bounded timeouts, and structured errors.

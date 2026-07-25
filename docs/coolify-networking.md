@@ -1,64 +1,76 @@
-# Coolify and Docker Networking
+# Coolify and Docker Deployment
 
-## Same Coolify host
+## Per-host deployment
 
-If the gateway and a node run on the same Coolify host, attach them to a private Docker network. The gateway should address the node by its Compose service name, not a public DNS name.
+Deploy one instance of `mcp-server-gateway` on every host that should be operated remotely:
+
+```text
+NAS01 → one gateway instance
+Lab01  → one gateway instance
+Other Coolify host → one gateway instance
+TrueNAS → future instance
+```
+
+Each instance is configured for its own host and never assumes that Docker networking is shared with another server.
+
+## Same-host Coolify access
+
+If the gateway and Coolify applications run on the same host, the gateway may use a private Docker network to reach approved application endpoints by service name.
 
 ```yaml
 networks:
-  mcp-private:
+  host-mcp-private:
     driver: bridge
 
 services:
-  gateway:
-    networks: [mcp-private]
-  unifi-mcp:
-    networks: [mcp-private]
+  mcp-gateway:
+    networks: [host-mcp-private]
+  approved-local-adapter:
+    networks: [host-mcp-private]
 ```
 
-Do not publish the node port to the host unless a separate operational requirement exists.
+Do not publish the adapter port publicly. Do not mount the Docker socket unless a later, explicit capability review approves it.
 
-## Different hosts
+## Remote client access
 
-Docker bridge networks are host-local. For nodes on `ai-core`, `NAS01`, or `Lab01`, use one of:
+Hermes/OpenClaw run on `ai-core` and connect to each host gateway over a private authenticated path:
 
-- private UniFi VLAN/routing;
+- existing lab VLAN/routing;
 - Tailscale or WireGuard;
-- a private reverse proxy reachable only from the gateway;
-- another authenticated private overlay.
+- private reverse proxy;
+- another authenticated overlay.
 
-Traffic should look like:
+Docker bridge networks do not span hosts.
 
 ```text
-Gateway → private address → node MCP endpoint
+Hermes/OpenClaw → private address of target host → local MCP gateway
 ```
 
 Not:
 
 ```text
-Internet → node MCP endpoint
+Internet → host Docker socket or unauthenticated MCP endpoint
 ```
 
-## Coolify requirements
+## Coolify requirements per host
 
-Each application should define:
+Each gateway application should define:
 
 - explicit internal port;
-- healthcheck endpoint;
+- `/healthz` and `/readyz` checks;
 - restart policy;
 - read-only filesystem where compatible;
 - dropped Linux capabilities;
 - no Docker socket by default;
-- secrets as runtime environment values;
+- secrets as host-local Coolify environment values;
 - resource limits;
 - structured logs.
 
-## Initial rollout
+## First rollout
 
-1. Deploy gateway with no nodes enabled.
-2. Deploy one read-only node in an isolated Coolify application.
-3. Verify private connectivity from gateway to node.
-4. Verify MCP initialize, tools/list, repeated calls, and timeout behavior.
-5. Enable the node in the gateway registry.
-6. Connect Hermes and OpenClaw read-only clients.
-7. Add further nodes one at a time.
+1. Deploy one observer-only gateway on a non-critical Coolify host.
+2. Verify that Hermes/OpenClaw can reach only that host's endpoint.
+3. Verify MCP initialize, tools/list, repeated calls, and timeout behavior.
+4. Test read-only Docker/Coolify inventory.
+5. Add a second host instance only after the first passes the complete checklist.
+6. Add operator actions per host, individually and explicitly.
