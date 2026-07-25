@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-server-gateway"
+version = "0.1.0"
+description = "Per-host MCP gateway for controlled infrastructure operations"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.13,<2",
+  "psutil>=6,<7",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<9"]
+
+[project.scripts]
+mcp-server-gateway = "mcp_gateway.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_gateway"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

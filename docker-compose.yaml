@@ -1,0 +1,26 @@
+services:
+  mcp-gateway:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+      MCP_HOST_ID: ${MCP_HOST_ID:-lab01}
+      MCP_PROFILE: ${MCP_PROFILE:-observer}
+      MCP_ALLOWED_CWDS: ${MCP_ALLOWED_CWDS:-/workspace}
+    ports:
+      - "8000:8000"
+    volumes:
+      - gateway-workspace:/workspace
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  gateway-workspace:

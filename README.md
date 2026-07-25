@@ -39,9 +39,20 @@ The first target is Coolify/Docker hosts. TrueNAS is intentionally deferred unti
 - `docs/operations.md` — rollout and verification checklist.
 - `deploy/coolify/` — deployment guidance.
 
-## Status
+## Implementation status
 
-This repository currently contains the architecture and deployment contract. The executable gateway will be added after the host-local transport, authentication, and authorization contract has been reviewed.
+The first executable slice is implemented:
+
+- Streamable HTTP at `/mcp` with stateless sessions;
+- `/healthz` and `/readyz`;
+- fixed startup profiles `observer` and `operator`;
+- host identity and resource status tools;
+- Docker inventory tool when Docker is available to the runtime;
+- operator-only `execute_command` using argv, no implicit shell;
+- working-directory, timeout, argument-count, output-size, and environment limits;
+- unprivileged container defaults for Coolify.
+
+The current container executes commands inside its own runtime. Host-level command execution requires a deliberately deployed host adapter or host service account; mounting the host Docker socket or privileged host mounts is not enabled by default.
 
 ## Design rule
 
