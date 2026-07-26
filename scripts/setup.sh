@@ -339,8 +339,9 @@ rm -f "$tmp_unit"
 trap - EXIT
 
 systemctl daemon-reload
-systemctl enable --now mcp-server-gateway.service
-success "systemd enabled and service started"
+systemctl enable mcp-server-gateway.service
+systemctl restart mcp-server-gateway.service
+success "systemd enabled and service restarted"
 
 phase "Verify live health endpoint"
 case "$BIND_HOST" in
@@ -352,14 +353,21 @@ esac
 health_url="http://$health_host:$PORT/healthz"
 python3 - "$health_url" <<'PY'
 import sys
+import time
 import urllib.request
 url = sys.argv[1]
-try:
-    with urllib.request.urlopen(url, timeout=5) as response:
-        if response.status != 200:
-            raise SystemExit(f"setup: health check returned HTTP {response.status}")
-except Exception as exc:
-    raise SystemExit(f"setup: service started but health check failed: {exc}")
+last_error = None
+for _ in range(15):
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            if response.status != 200:
+                raise RuntimeError(f"HTTP {response.status}")
+            break
+    except Exception as exc:
+        last_error = exc
+        time.sleep(1)
+else:
+    raise SystemExit(f"setup: service started but health check failed after retries: {last_error}")
 PY
 success "health check passed at $health_url"
 
