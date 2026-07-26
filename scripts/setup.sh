@@ -308,10 +308,10 @@ else
   chmod 0640 "$AUTH_FILE"
 fi
 if [[ ! -e "$AUTH_LOCK_FILE" ]]; then
-  install -o root -g "$SERVICE_USER" -m 0640 /dev/null "$AUTH_LOCK_FILE"
+  install -o root -g "$SERVICE_USER" -m 0660 /dev/null "$AUTH_LOCK_FILE"
 else
   chown root:"$SERVICE_USER" "$AUTH_LOCK_FILE"
-  chmod 0640 "$AUTH_LOCK_FILE"
+  chmod 0660 "$AUTH_LOCK_FILE"
 fi
 token_count="$($INSTALL_DIR/.venv/bin/python -c 'import json, sys; print(len(json.load(open(sys.argv[1], encoding="utf-8"))["tokens"]))' "$AUTH_FILE")" \
   || fail "invalid token store: $AUTH_FILE"

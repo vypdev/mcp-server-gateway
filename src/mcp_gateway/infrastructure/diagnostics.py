@@ -37,6 +37,9 @@ class SystemDiagnostics:
         auth_file = Path(config.get("MCP_AUTH_FILE", str(self.layout.auth_file)))
         checks.append(self._path_check("token store", auth_file, "file"))
         checks.append(self._secure_token_store_check(auth_file))
+        auth_lock_file = auth_file.parent / f".{auth_file.name}.lock"
+        checks.append(self._path_check("token store lock", auth_lock_file, "file"))
+        checks.append(self._token_lock_check(auth_lock_file))
         checks.append(self._service_user_check(config))
         checks.append(self._executable_check())
         checks.extend(self._service_checks())
@@ -86,6 +89,16 @@ class SystemDiagnostics:
         secure = mode & 0o007 == 0 and mode & 0o400 != 0
         message = str(path) if secure else f"token store must be owner/group readable and world-inaccessible (current {mode:04o})"
         return CheckResult("token store permissions", secure, message)
+
+    @staticmethod
+    def _token_lock_check(path: Path) -> CheckResult:
+        try:
+            mode = stat.S_IMODE(path.stat().st_mode)
+        except OSError as exc:
+            return CheckResult("token store lock permissions", False, str(exc))
+        secure = mode & 0o007 == 0 and mode & 0o660 == 0o660
+        message = str(path) if secure else f"token store lock must be owner/group read-write and world-inaccessible (current {mode:04o})"
+        return CheckResult("token store lock permissions", secure, message)
 
     @staticmethod
     def _service_user_check(config: dict[str, str]) -> CheckResult:

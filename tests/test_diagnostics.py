@@ -29,6 +29,9 @@ def test_doctor_passes_for_complete_installation(tmp_path, monkeypatch):
     auth = tmp_path / "tokens.json"
     auth.write_text('{"version":1,"tokens":[]}\n')
     auth.chmod(0o640)
+    lock = tmp_path / ".tokens.json.lock"
+    lock.write_text("")
+    lock.chmod(0o660)
     config.write_text(
         "MCP_PROFILE=observer\nMCP_HOST=127.0.0.1\nMCP_PORT=8000\n"
         f"MCP_AUTH_FILE={auth}\n"
