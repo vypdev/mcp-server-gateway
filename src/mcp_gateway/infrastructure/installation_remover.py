@@ -29,6 +29,8 @@ class SystemInstallationRemover:
         self.controller.daemon_reload()
         self._remove_path(self.cli_path, expected_target=Path("/opt/mcp-server-gateway/.venv/bin/mcp-gateway"))
         self._remove_path(self.layout.config_file)
+        self._remove_path(self.layout.auth_file)
+        self._remove_path(self.layout.auth_lock_file)
         self._remove_path(self.marker_path)
         self._remove_config_backups()
         self._remove_tree(self.layout.install_dir)

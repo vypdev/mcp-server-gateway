@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Any
 from pathlib import Path
 
+from pydantic import AnyHttpUrl
+from mcp.server.auth.provider import TokenVerifier
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -18,7 +21,15 @@ def create_server(
     settings: Settings,
     host_info: HostInfoProvider,
     execute_command_use_case: ExecuteCommand,
+    token_verifier: TokenVerifier | None = None,
 ) -> FastMCP:
+    auth = None
+    if token_verifier is not None:
+        auth = AuthSettings(
+            issuer_url=AnyHttpUrl(f"http://localhost:{settings.port}"),
+            resource_server_url=None,
+            required_scopes=["gateway"],
+        )
     server = FastMCP(
         name="mcp-server-gateway",
         instructions=(
@@ -31,6 +42,8 @@ def create_server(
         streamable_http_path="/mcp",
         json_response=True,
         stateless_http=True,
+        token_verifier=token_verifier,
+        auth=auth,
     )
 
     @server.custom_route("/healthz", methods=["GET"])

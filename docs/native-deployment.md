@@ -88,6 +88,7 @@ MCP_ALLOWED_CWDS=/var/lib/mcp-server-gateway
 MCP_COMMAND_TIMEOUT_SECONDS=30
 MCP_MAX_OUTPUT_BYTES=262144
 MCP_MAX_COMMAND_ARGS=64
+MCP_AUTH_FILE=/etc/mcp-server-gateway/tokens.json
 ```
 
 For remote clients, bind to a private interface and restrict the firewall to approved client addresses. Do not bind publicly without private transport and authentication.
@@ -102,6 +103,9 @@ mcp-gateway status
 sudo mcp-gateway start
 sudo mcp-gateway restart
 sudo mcp-gateway stop
+sudo mcp-gateway authenticate openclaw
+sudo mcp-gateway authenticate hermes
+sudo mcp-gateway revoke openclaw
 sudo mcp-gateway uninstall --yes
 ```
 
@@ -126,7 +130,7 @@ Then test read-only diagnostics and bounded command execution. Do not grant extr
 
 ## Network and authentication
 
-Expose the MCP endpoint only over a private authenticated transport. Allow the service port only from approved client addresses. Add TLS and client authentication at a private reverse proxy or implement MCP authentication before exposing the endpoint outside the trusted network.
+Expose the MCP endpoint only over a private authenticated transport. The gateway now requires a per-client Bearer token on `/mcp`; `/healthz` and `/readyz` remain local supervision endpoints. Allow the service port only from approved client addresses. For a LAN deployment, combine `--bind <private-host-ip>`, a verified unused port, a firewall allowlist, and a token stored only in the client secret environment.
 
 ## Rollback
 

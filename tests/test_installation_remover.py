@@ -22,19 +22,30 @@ def test_remover_deletes_managed_artifacts_and_created_user(tmp_path, monkeypatc
     state = tmp_path / "state"
     config_dir = tmp_path / "etc"
     config = config_dir / "gateway.env"
+    auth = config_dir / "tokens.json"
+    auth_lock = config_dir / ".tokens.json.lock"
     service = tmp_path / "mcp-server-gateway.service"
     cli = tmp_path / "mcp-gateway"
     install.mkdir()
     state.mkdir()
     config_dir.mkdir()
     config.write_text("MCP_PROFILE=observer\n")
+    auth.write_text('{"version":1,"tokens":[]}\n')
+    auth_lock.write_text("")
     (config_dir / "managed-user").write_text(
         "MCP_SERVICE_USER=mcp-observer\nMCP_SERVICE_USER_CREATED=1\n"
     )
     (config_dir / "gateway.env.bak.20260101000000").write_text("old\n")
     service.write_text("[Unit]\n")
     cli.symlink_to("/opt/mcp-server-gateway/.venv/bin/mcp-gateway")
-    layout = InstallationLayout(install, config, service, state)
+    layout = InstallationLayout(
+        install_dir=install,
+        config_file=config,
+        service_file=service,
+        state_dir=state,
+        auth_file=auth,
+        auth_lock_file=auth_lock,
+    )
     controller = FakeController()
     remover = SystemInstallationRemover(controller, layout, cli)
     monkeypatch.setattr("mcp_gateway.infrastructure.installation_remover.os.geteuid", lambda: 0)
@@ -53,6 +64,8 @@ def test_remover_deletes_managed_artifacts_and_created_user(tmp_path, monkeypatc
     assert not install.exists()
     assert not state.exists()
     assert not config.exists()
+    assert not auth.exists()
+    assert not auth_lock.exists()
     assert not service.exists()
     assert not cli.exists()
     assert userdel_calls == [["userdel", "--remove", "mcp-observer"]]

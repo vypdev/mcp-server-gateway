@@ -1,7 +1,10 @@
 from mcp_gateway.application.services import ExecuteCommand
+from mcp_gateway.application.authentication import AuthenticationService
 from mcp_gateway.infrastructure.host_info import PsutilHostInfoProvider
 from mcp_gateway.infrastructure.settings import Settings
 from mcp_gateway.infrastructure.subprocess_runner import ProcessPolicy, SubprocessCommandRunner
+from mcp_gateway.infrastructure.token_store import JsonTokenStore
+from mcp_gateway.infrastructure.token_verifier import LocalTokenVerifier
 from mcp_gateway.presentation.mcp_server import create_server
 
 
@@ -17,7 +20,13 @@ def build_server():
     )
     host_info = PsutilHostInfoProvider(settings.host_id, settings.profile.value)
     execute_command = ExecuteCommand(settings.profile, runner)
-    return create_server(settings, host_info, execute_command)
+    authentication = AuthenticationService(JsonTokenStore(settings.auth_file))
+    return create_server(
+        settings,
+        host_info,
+        execute_command,
+        token_verifier=LocalTokenVerifier(authentication),
+    )
 
 
 def main() -> None:

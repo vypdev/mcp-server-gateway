@@ -18,6 +18,7 @@ class Settings:
     max_command_args: int = 64
     bind_host: str = "127.0.0.1"
     port: int = 8000
+    auth_file: Path = Path("/etc/mcp-server-gateway/tokens.json")
 
     def __post_init__(self) -> None:
         if not self.allowed_cwds:
@@ -48,4 +49,5 @@ class Settings:
             max_command_args=int(os.getenv("MCP_MAX_COMMAND_ARGS", "64")),
             bind_host=os.getenv("MCP_HOST", "127.0.0.1"),
             port=int(os.getenv("MCP_PORT", "8000")),
+            auth_file=Path(os.getenv("MCP_AUTH_FILE", "/etc/mcp-server-gateway/tokens.json")),
         )

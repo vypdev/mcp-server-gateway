@@ -18,6 +18,8 @@ class InstallationLayout:
     config_file: Path = Path("/etc/mcp-server-gateway/gateway.env")
     service_file: Path = Path("/etc/systemd/system/mcp-server-gateway.service")
     state_dir: Path = Path("/var/lib/mcp-server-gateway")
+    auth_file: Path = Path("/etc/mcp-server-gateway/tokens.json")
+    auth_lock_file: Path = Path("/etc/mcp-server-gateway/.tokens.json.lock")
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,9 @@ class SystemDiagnostics:
             self._path_check("state directory", self.layout.state_dir, "directory"),
         ]
         config = self._read_config(checks)
+        auth_file = Path(config.get("MCP_AUTH_FILE", str(self.layout.auth_file)))
+        checks.append(self._path_check("token store", auth_file, "file"))
+        checks.append(self._secure_token_store_check(auth_file))
         checks.append(self._service_user_check(config))
         checks.append(self._executable_check())
         checks.extend(self._service_checks())
@@ -56,7 +61,7 @@ class SystemDiagnostics:
             secure,
             str(self.layout.config_file) if secure else f"permissions must be 0600 or stricter (current {mode:04o})",
         ))
-        required = {"MCP_PROFILE", "MCP_HOST", "MCP_PORT"}
+        required = {"MCP_PROFILE", "MCP_HOST", "MCP_PORT", "MCP_AUTH_FILE"}
         missing = sorted(required - values.keys())
         checks.append(CheckResult("configuration keys", not missing, "required keys present" if not missing else f"missing: {', '.join(missing)}"))
         return values
@@ -71,6 +76,16 @@ class SystemDiagnostics:
             key, value = line.split("=", 1)
             values[key.strip()] = value.strip()
         return values
+
+    @staticmethod
+    def _secure_token_store_check(path: Path) -> CheckResult:
+        try:
+            mode = stat.S_IMODE(path.stat().st_mode)
+        except OSError as exc:
+            return CheckResult("token store permissions", False, str(exc))
+        secure = mode & 0o007 == 0 and mode & 0o400 != 0
+        message = str(path) if secure else f"token store must be owner/group readable and world-inaccessible (current {mode:04o})"
+        return CheckResult("token store permissions", secure, message)
 
     @staticmethod
     def _service_user_check(config: dict[str, str]) -> CheckResult:

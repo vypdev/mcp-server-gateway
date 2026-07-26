@@ -6,6 +6,8 @@ RECONFIGURE=0
 INSTALL_DIR="/opt/mcp-server-gateway"
 CONFIG_DIR="/etc/mcp-server-gateway"
 STATE_DIR="/var/lib/mcp-server-gateway"
+AUTH_FILE="$CONFIG_DIR/tokens.json"
+AUTH_LOCK_FILE="$CONFIG_DIR/.tokens.json.lock"
 MANAGED_USER_MARKER="$CONFIG_DIR/managed-user"
 HOST_ID="$(hostname -s)"
 BIND_HOST="127.0.0.1"
@@ -262,6 +264,10 @@ if [[ -e "$CONFIG_FILE" && "$RECONFIGURE" -ne 1 ]]; then
   configured_bind="$(awk -F= '$1 == "MCP_HOST" {print $2; exit}' "$CONFIG_FILE" || true)"
   [[ -n "$configured_bind" ]] || fail "$CONFIG_FILE must define MCP_HOST"
   BIND_HOST="$configured_bind"
+  configured_auth_file="$(awk -F= '$1 == "MCP_AUTH_FILE" {print $2; exit}' "$CONFIG_FILE" || true)"
+  [[ -n "$configured_auth_file" ]] || fail "$CONFIG_FILE predates authentication; rerun with --reconfigure after reviewing the generated backup"
+  AUTH_FILE="$configured_auth_file"
+  AUTH_LOCK_FILE="$(dirname "$AUTH_FILE")/.$(basename "$AUTH_FILE").lock"
   printf 'setup: preserving existing %s and its effective endpoint\n' "$CONFIG_FILE"
 else
   [[ "$RECONFIGURE" -eq 1 && -e "$CONFIG_FILE" ]] && cp -a "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
@@ -276,9 +282,11 @@ else
     "MCP_MAX_OUTPUT_BYTES=262144" \
     "MCP_MAX_COMMAND_ARGS=64" \
     "MCP_HOST=$BIND_HOST" \
-    "MCP_PORT=$PORT" > "$tmp_config"
+    "MCP_PORT=$PORT" \
+    "MCP_AUTH_FILE=$AUTH_FILE" > "$tmp_config"
   install -o root -g root -m 0600 "$tmp_config" "$CONFIG_FILE"
 fi
+[[ "$AUTH_FILE" == "$CONFIG_DIR/"* ]] || fail "MCP_AUTH_FILE must remain inside $CONFIG_DIR"
 
 trap 'rm -f "$tmp_config" "$tmp_unit" "$tmp_marker"' EXIT
 tmp_marker="$(mktemp)"
@@ -289,6 +297,30 @@ install -o root -g root -m 0600 "$tmp_marker" "$MANAGED_USER_MARKER"
 rm -f "$tmp_marker"
 tmp_marker=""
 success "configuration and service identity marker secured"
+
+phase "Provision client authentication"
+if [[ ! -e "$AUTH_FILE" ]]; then
+  install -o root -g "$SERVICE_USER" -m 0640 /dev/null "$AUTH_FILE"
+  printf '%s\n' '{"version":1,"tokens":[]}' > "$AUTH_FILE"
+  chown root:"$SERVICE_USER" "$AUTH_FILE"
+else
+  chown root:"$SERVICE_USER" "$AUTH_FILE"
+  chmod 0640 "$AUTH_FILE"
+fi
+if [[ ! -e "$AUTH_LOCK_FILE" ]]; then
+  install -o root -g "$SERVICE_USER" -m 0640 /dev/null "$AUTH_LOCK_FILE"
+else
+  chown root:"$SERVICE_USER" "$AUTH_LOCK_FILE"
+  chmod 0640 "$AUTH_LOCK_FILE"
+fi
+token_count="$($INSTALL_DIR/.venv/bin/python -c 'import json, sys; print(len(json.load(open(sys.argv[1], encoding="utf-8"))["tokens"]))' "$AUTH_FILE")" \
+  || fail "invalid token store: $AUTH_FILE"
+if [[ "$token_count" == "0" ]]; then
+  bootstrap_credentials="$($CLI_TARGET authenticate bootstrap)" || fail "could not create bootstrap authentication token"
+  printf '%s\n' "$bootstrap_credentials"
+else
+  info "preserving existing client tokens ($token_count active)"
+fi
 
 phase "Register and activate systemd service"
 

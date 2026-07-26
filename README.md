@@ -63,8 +63,25 @@ The setup script creates the matching `mcp-observer` or `mcp-operator` account w
 - Commands use argv execution with no implicit shell.
 - Working directories, timeouts, argument count, environment, and output are bounded.
 - The service binds to loopback by default.
-- The MCP endpoint must remain on a private authenticated network.
-- Secrets are never stored in Git or returned in tool output.
+- The MCP endpoint requires a per-client Bearer token.
+- Token records are stored as SHA-256 hashes in `/etc/mcp-server-gateway/tokens.json`; plaintext tokens are shown only at creation.
+
+## Client authentication
+
+The setup creates a bootstrap credential and prints it once. Copy it to the intended MCP client's secret environment, not to Git or ordinary logs. Generate independent credentials for each client:
+
+```bash
+sudo mcp-gateway authenticate openclaw
+sudo mcp-gateway authenticate hermes
+```
+
+Each command prints one new token and never revokes existing tokens. Revoke all tokens belonging to a client label with:
+
+```bash
+sudo mcp-gateway revoke openclaw
+```
+
+Use a stable client label such as `openclaw`, `hermes`, or an authorized host/domain identifier. The `/healthz` and `/readyz` endpoints remain unauthenticated for local service supervision; `/mcp` requires `Authorization: Bearer <token>`.
 
 ## Architecture
 
