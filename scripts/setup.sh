@@ -223,7 +223,7 @@ fi
 phase "Build isolated gateway runtime"
 install -d -o root -g root -m 0755 "$INSTALL_DIR"
 install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 "$STATE_DIR"
-install -d -o root -g root -m 0750 "$CONFIG_DIR"
+install -d -o root -g "$SERVICE_USER" -m 0750 "$CONFIG_DIR"
 
 tar -C "$REPO_ROOT" \
   --exclude=.git --exclude=.venv --exclude=__pycache__ \
