@@ -1,19 +1,18 @@
 # Architecture
 
-## Primary model: one gateway per host
+## Primary model: one native gateway per host
 
-`mcp-server-gateway` is deployed on the server it manages. Hermes and OpenClaw connect to each remote instance as MCP clients.
+`mcp-server-gateway` runs directly on the server it manages as a systemd service. Hermes and OpenClaw connect to each remote instance as MCP clients.
 
 ```text
 Hermes/OpenClaw on ai-core
        │ private authenticated MCP/HTTPS
-       ├──────────────► MCP Gateway on NAS01
-       ├──────────────► MCP Gateway on Lab01
-       ├──────────────► MCP Gateway on another Coolify host
-       └──────────────► future MCP Gateway on TrueNAS
+       ├──────────────► Native MCP Gateway on Lab01
+       ├──────────────► Native MCP Gateway on NAS01
+       └──────────────► future Native MCP Gateway on TrueNAS
 ```
 
-There is no requirement for a central aggregator. A future aggregator could be added, but it is not part of the initial design.
+There is no central aggregator and no requirement to run the gateway inside Coolify or Docker. Coolify and Docker are managed targets of each native gateway.
 
 ## What a per-host gateway does
 
@@ -24,22 +23,25 @@ A gateway instance is a local control plane for its own host. It can expose type
 - local Coolify application status;
 - bounded service logs;
 - named healthchecks;
-- controlled deployments or restarts when explicitly enabled.
+- controlled deployments or restarts when explicitly enabled;
+- policy-controlled command execution as the gateway Unix user.
 
-Hermes/OpenClaw do not receive the host's SSH private key, Docker credentials, or arbitrary shell access.
+Hermes/OpenClaw do not receive the host's SSH private key, Docker credentials, or unrestricted root access.
 
 ## Local adapters
 
-The gateway may use host-local adapters internally:
+The native gateway may use host-local adapters internally:
 
 ```text
-MCP Gateway on NAS01
-  ├── Docker/Coolify adapter
+Native MCP Gateway on Lab01
+  ├── Docker adapter
+  ├── Coolify API adapter
   ├── host health adapter
-  └── future TrueNAS adapter
+  ├── systemd adapter
+  └── command executor
 ```
 
-Those adapters do not need to be separate MCP servers. They are implementation modules behind one host-local MCP endpoint.
+These adapters do not need to be separate MCP servers. They are implementation modules behind one host-local MCP endpoint.
 
 ## Trust zones
 
@@ -59,11 +61,11 @@ Zone D: target host
 
 The gateway is the only component that crosses from Zone C into the target host. Clients do not bypass it.
 
-## Host-local execution
+## Native execution
 
-For Coolify-managed applications, prefer the Coolify API or a narrowly scoped Docker adapter. Mounting `/var/run/docker.sock` into a gateway container grants near-root control of the host and must not be the default.
+The gateway process runs as a dedicated Unix identity, for example `mcp-operator`. Its effective capabilities come from that identity's UID/GID, supplementary groups, filesystem permissions, systemd sandboxing, and explicitly reviewed sudoers rules.
 
-For systemd and host-level operations, use a small host agent or a privileged, explicitly reviewed adapter. A normal unprivileged container cannot safely control host systemd merely because it runs on the same machine.
+If Docker access is granted, treat membership in the `docker` group as root-equivalent. Prefer the Coolify API or narrowly scoped adapters where possible. Do not mount `/var/run/docker.sock` into a container as a shortcut.
 
 ## Transport
 

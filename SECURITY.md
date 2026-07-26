@@ -7,7 +7,7 @@ Each host runs one gateway instance with a fixed startup profile:
 - `observer`: read-only tools and gateway-owned diagnostics.
 - `operator`: observer capabilities plus policy-controlled command execution and approved operations.
 
-An MCP client cannot change the profile. Profile changes require an external Coolify/service deployment action.
+An MCP client cannot change the profile. Profile changes require an external systemd/service deployment action performed by an authorized administrator.
 
 ## Command execution
 
@@ -15,6 +15,6 @@ An MCP client cannot change the profile. Profile changes require an external Coo
 
 ## Deployment
 
-The default image is unprivileged, drops Linux capabilities, uses a read-only filesystem, and does not mount the Docker socket. Add host adapters or Docker access only through an explicit host-specific review.
+The supported production runtime is a native systemd service on the managed host, with a dedicated Unix identity and no root execution by default. Container files are retained only for isolated development/tests; they are not the Lab01 deployment model.
 
 Never commit credentials, tokens, SSH keys, Docker socket exports, or Coolify environment files.

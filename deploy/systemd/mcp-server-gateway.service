@@ -1,0 +1,26 @@
+[Unit]
+Description=MCP Server Gateway for the local host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcp-operator
+Group=mcp-operator
+WorkingDirectory=/opt/mcp-server-gateway
+EnvironmentFile=/etc/mcp-server-gateway/gateway.env
+ExecStart=/opt/mcp-server-gateway/.venv/bin/mcp-server-gateway
+Restart=on-failure
+RestartSec=5s
+
+# Keep the service unprivileged and reduce accidental host impact.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=full
+ReadWritePaths=/var/lib/mcp-server-gateway
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
