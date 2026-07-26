@@ -3,51 +3,36 @@
 The gateway has two independent enforcement layers:
 
 1. **MCP runtime profile** — which tools are registered and exposed.
-2. **Unix identity** — which files, sockets, services, Docker APIs, and commands the process can actually access.
+2. **Unix identity** — which files, sockets, services, and processes the service can actually access.
 
 Both layers must agree. A profile is not a security boundary if its process can change its own configuration or restart itself with stronger privileges.
 
-## Profiles
-
-### Observer
+## Observer
 
 ```text
 MCP_PROFILE=observer
 Unix identity: mcp-observer
 ```
 
-Exposes read-only tools:
-
-- host status and metrics;
-- process and service status;
-- Docker inventory and bounded logs;
-- Coolify application status;
-- named healthchecks;
-- read-only filesystem paths.
+Exposes read-only host information and diagnostics.
 
 The observer identity must not:
 
-- access operator configuration or secrets;
-- write the gateway configuration;
+- access operator configuration;
+- write gateway configuration;
 - restart the gateway with another profile;
-- access a write-capable Docker socket;
-- use sudo to become the operator identity.
+- use privilege escalation to become the operator identity.
 
-### Operator
+## Operator
 
 ```text
 MCP_PROFILE=operator
 Unix identity: mcp-operator
 ```
 
-Exposes all observer tools plus explicitly enabled operator tools:
+Exposes all observer tools plus policy-controlled command execution.
 
-- restart allowlisted services or containers;
-- trigger allowlisted Coolify deployments;
-- execute commands according to the operator command policy;
-- perform bounded maintenance operations.
-
-The operator identity may use additional groups or narrowly scoped sudoers rules. It must still not be root by default.
+The operator identity may use additional groups or narrowly scoped privilege rules. It must not be root by default.
 
 ## Profile selection
 
@@ -58,42 +43,38 @@ MCP_PROFILE=observer
 MCP_HOST_ID=managed-host
 ```
 
-Changing from observer to operator requires an external deployment or service-management action performed by an authorized administrator. The observer process must not be able to perform that transition.
+Changing from observer to operator requires an external service-management action performed by an authorized administrator.
 
 ## Deployment shape
 
-Run one gateway instance per host. Select its profile at startup and keep that profile fixed for the lifetime of the process:
+Run one gateway instance per host and keep its profile fixed for the process lifetime:
 
 ```text
-managed-host-mcp-gateway → mcp-observer  → read-only
-managed-host-mcp-gateway → mcp-operator  → observer + approved writes
+managed-host-gateway → mcp-observer  → read-only
+managed-host-gateway → mcp-operator  → observer + command policy
 ```
 
-The operator profile includes observer capabilities. The observer profile cannot activate operator capabilities, change its own profile, or restart itself with stronger privileges. Changing profile requires an external deployment or service-management action performed by an authorized administrator.
+The operator profile includes observer capabilities. The observer profile cannot activate operator capabilities or restart itself with stronger privileges.
 
 ## Command execution
 
-Operator command execution must use a policy, not an unrestricted model-controlled privilege escalation:
+Operator command execution must use a policy:
 
-- execute as `mcp-operator`;
+- execute as the service Unix identity;
 - validate working directory;
 - filter environment variables;
 - enforce timeout and output limits;
 - record command, actor, host, exit code, and duration;
 - redact secrets from audit output;
 - require confirmation for disruptive operations;
-- use argv execution by default, with shell mode explicitly enabled per host.
+- use argv execution by default.
 
 ## Capability matrix
 
 | Capability | Observer | Operator |
 |---|---:|---:|
+| Host identity | yes | yes |
 | Host status | yes | yes |
-| Docker inventory | yes | yes |
-| Service logs | yes | yes |
-| Coolify status | yes | yes |
-| Restart service | no | allowlist |
-| Restart container | no | allowlist |
-| Coolify deploy | no | allowlist + confirmation |
-| Command execution | read-only named commands | policy-controlled |
-| Arbitrary root shell | no | no |
+| Read-only diagnostics | yes | yes |
+| Command execution | no | policy-controlled |
+| Privilege escalation | no | no by default |

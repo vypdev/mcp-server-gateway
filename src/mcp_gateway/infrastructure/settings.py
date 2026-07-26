@@ -5,15 +5,14 @@ import socket
 from dataclasses import dataclass
 from pathlib import Path
 
-
-_VALID_PROFILES = {"observer", "operator"}
+from mcp_gateway.domain.profiles import Profile
 
 
 @dataclass(frozen=True)
 class Settings:
-    profile: str = "observer"
+    profile: Profile = Profile.OBSERVER
     host_id: str = "unknown"
-    allowed_cwds: tuple[str, ...] = ("/tmp",)
+    allowed_cwds: tuple[Path, ...] = (Path("/tmp"),)
     command_timeout_seconds: float = 30.0
     max_output_bytes: int = 262_144
     max_command_args: int = 64
@@ -21,30 +20,29 @@ class Settings:
     port: int = 8000
 
     def __post_init__(self) -> None:
-        if self.profile not in _VALID_PROFILES:
-            raise ValueError(f"MCP_PROFILE must be one of {sorted(_VALID_PROFILES)}")
+        if not self.allowed_cwds:
+            raise ValueError("allowed_cwds must not be empty")
         if self.command_timeout_seconds <= 0:
             raise ValueError("command_timeout_seconds must be positive")
         if self.max_output_bytes <= 0:
             raise ValueError("max_output_bytes must be positive")
-        if not self.allowed_cwds:
-            raise ValueError("allowed_cwds must not be empty")
-
-    @property
-    def can_execute_commands(self) -> bool:
-        return self.profile == "operator"
+        if self.max_command_args <= 0:
+            raise ValueError("max_command_args must be positive")
+        if not 1 <= self.port <= 65_535:
+            raise ValueError("port must be between 1 and 65535")
 
     @classmethod
     def from_env(cls) -> "Settings":
-        cwds = tuple(
-            str(Path(item).expanduser())
+        paths = tuple(
+            Path(item).expanduser()
             for item in os.getenv("MCP_ALLOWED_CWDS", "/tmp").split(":")
             if item
         )
+        profile = Profile(os.getenv("MCP_PROFILE", Profile.OBSERVER.value).strip().lower())
         return cls(
-            profile=os.getenv("MCP_PROFILE", "observer").strip().lower(),
+            profile=profile,
             host_id=os.getenv("MCP_HOST_ID", socket.gethostname()),
-            allowed_cwds=cwds,
+            allowed_cwds=paths,
             command_timeout_seconds=float(os.getenv("MCP_COMMAND_TIMEOUT_SECONDS", "30")),
             max_output_bytes=int(os.getenv("MCP_MAX_OUTPUT_BYTES", "262144")),
             max_command_args=int(os.getenv("MCP_MAX_COMMAND_ARGS", "64")),

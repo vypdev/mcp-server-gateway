@@ -9,16 +9,15 @@ endpoint: https://gateway.<private-domain>/mcp
 transport: streamable-http
 capabilities:
   observer:
+    - host_get_identity
     - host_get_status
-    - docker_list_containers
-    - coolify_list_applications
-  operator: []
-  admin: []
-timeout_seconds: 15
+  operator:
+    - execute_command
+timeout_seconds: 30
 max_response_bytes: 262144
 ```
 
-The `id` identifies the target host, not a central node. Hermes and OpenClaw select the gateway instance according to the task.
+The identity identifies the target host. Clients select the gateway instance according to the task.
 
 ## Required behavior
 
@@ -30,13 +29,13 @@ The `id` identifies the target host, not a central node. Hermes and OpenClaw sel
 - Explicit timeout handling.
 - No secrets in tool responses or logs.
 - Stable typed tool names and schemas.
-- Repeated calls work without a stale SSE session.
+- Repeated calls work without stale sessions.
 - The gateway cannot silently operate on a different host than its identity.
 
 ## Capability levels
 
-`observer` is read-only. `operator` contains narrowly scoped reversible actions. `admin` is reserved for explicit host changes. An empty list means the capability is unavailable.
+`observer` is read-only. `operator` adds policy-controlled command execution. An empty capability means unavailable.
 
 ## Registration policy
 
-The client configuration must map each endpoint to one host identity. The gateway must reject unknown tool names, capability escalation, and requests that target another host through a host-local instance.
+Client configuration maps each endpoint to one host identity. The gateway rejects unknown tools, capability escalation, and requests that target another host through a host-local instance.

@@ -2,27 +2,27 @@
 
 ## Pre-deployment
 
-- [ ] Repository contains no secrets.
-- [ ] Gateway and node images are pinned or reproducibly built.
-- [ ] Node endpoints are private.
-- [ ] Observer profile is the only enabled capability.
-- [ ] Gateway and each node have healthchecks.
-- [ ] Coolify environment variables are configured outside Git.
+- [ ] Confirm the host runs a supported Linux version and systemd.
+- [ ] Review the Unix identity selected for the profile.
+- [ ] Select the profile explicitly.
+- [ ] Select private bind address and unused port.
+- [ ] Define filesystem paths allowed to command execution.
+- [ ] Configure private transport and client authentication outside Git.
+- [ ] Confirm no secrets are tracked.
 
 ## Verification
 
-- [ ] Gateway healthcheck passes.
-- [ ] Node healthcheck passes.
-- [ ] MCP initialize succeeds.
-- [ ] `tools/list` matches the node contract.
-- [ ] Two sequential calls succeed.
-- [ ] Concurrent calls do not mix responses.
-- [ ] Upstream timeout returns a bounded structured error.
-- [ ] Unauthorized node/tool requests are rejected.
-- [ ] Hermes can connect.
-- [ ] OpenClaw can connect.
-- [ ] Audit logs contain no secrets.
+- [ ] `systemctl status` is active.
+- [ ] `/healthz` returns status `ok`.
+- [ ] `/readyz` reports the expected profile.
+- [ ] MCP `initialize` succeeds.
+- [ ] `tools/list` matches the profile contract.
+- [ ] Host identity matches the target host.
+- [ ] Observer calls are read-only.
+- [ ] Operator commands respect timeout, path, output, and environment limits.
+- [ ] Repeated calls and independent sessions work.
+- [ ] Client integration is tested before enabling automation.
 
 ## Rollback
 
-Disable the node in the gateway registry, restore the previous Coolify deployment, verify gateway health, and leave the existing MCP configuration untouched until the replacement passes the complete validation matrix.
+Disable the system service, restore the previous client endpoint, and preserve logs and configuration for diagnosis. Do not remove state until the rollback has been verified.

@@ -130,7 +130,13 @@ tmp_unit=""
 if [[ -e "$CONFIG_FILE" && "$RECONFIGURE" -ne 1 ]]; then
   current_profile="$(awk -F= '$1 == "MCP_PROFILE" {print $2; exit}' "$CONFIG_FILE" || true)"
   [[ "$current_profile" == "$PROFILE" ]] || fail "$CONFIG_FILE already exists with profile '$current_profile'; use --reconfigure only after reviewing it"
-  printf 'setup: preserving existing %s\n' "$CONFIG_FILE"
+  configured_port="$(awk -F= '$1 == "MCP_PORT" {print $2; exit}' "$CONFIG_FILE" || true)"
+  [[ "$configured_port" =~ ^[0-9]+$ ]] && (( configured_port >= 1 && configured_port <= 65535 )) || fail "$CONFIG_FILE contains an invalid MCP_PORT"
+  PORT="$configured_port"
+  configured_bind="$(awk -F= '$1 == "MCP_HOST" {print $2; exit}' "$CONFIG_FILE" || true)"
+  [[ -n "$configured_bind" ]] || fail "$CONFIG_FILE must define MCP_HOST"
+  BIND_HOST="$configured_bind"
+  printf 'setup: preserving existing %s and its effective endpoint\n' "$CONFIG_FILE"
 else
   [[ "$RECONFIGURE" -eq 1 && -e "$CONFIG_FILE" ]] && cp -a "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
   [[ -n "$ALLOWED_CWDS" ]] || ALLOWED_CWDS="$STATE_DIR"
@@ -165,7 +171,13 @@ trap - EXIT
 systemctl daemon-reload
 systemctl enable --now mcp-server-gateway.service
 
-health_url="http://127.0.0.1:$PORT/healthz"
+case "$BIND_HOST" in
+  0.0.0.0|"") health_host="127.0.0.1" ;;
+  ::|"::0") health_host="[::1]" ;;
+  *:*) health_host="[$BIND_HOST]" ;;
+  *) health_host="$BIND_HOST" ;;
+esac
+health_url="http://$health_host:$PORT/healthz"
 python3 - "$health_url" <<'PY'
 import sys
 import urllib.request

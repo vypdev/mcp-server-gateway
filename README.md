@@ -1,74 +1,115 @@
 # MCP Server Gateway
 
-A per-host MCP server for giving Hermes and OpenClaw controlled access to remote lab servers.
-
-The gateway is deployed **natively on the server it manages** as a systemd service. It is not a central aggregator and it is not deployed inside Coolify or Docker for the host-control use case.
+A native, per-host MCP server that gives MCP clients controlled access to the operating system on which it runs.
 
 ```text
-Hermes/OpenClaw on a client host
-        │
-        ├── Native MCP Server Gateway on a managed host
-        ├── Native MCP Server Gateway on another managed host
-        └── future Native MCP Server Gateway on another platform
+MCP clients
+    │ private authenticated transport
+    ▼
+Native MCP Server Gateway
+    │
+    ├── host identity and status
+    ├── bounded process execution
+    ├── service-specific adapters
+    └── filesystem paths explicitly allowed by policy
 ```
 
-Each instance is a local authority for one host. It can inspect and operate that host's Docker/Coolify services without giving Hermes or OpenClaw direct SSH access, shell access, or Docker credentials.
+The gateway is not a central aggregator. Each installation is a local authority for exactly one host and runs as a system service under a dedicated Unix identity.
 
 ## Quick start
 
-On a Linux host with systemd, clone the repository and run the native setup script as root:
+On a Linux host with systemd:
 
 ```bash
-git clone --branch master --depth 1 https://github.com/vypdev/mcp-server-gateway.git
+git clone --branch master --depth 1 \
+  https://github.com/vypdev/mcp-server-gateway.git
 cd mcp-server-gateway
 sudo ./scripts/setup.sh --profile observer
 ```
 
-Use `--profile operator` only after reviewing the target Unix identity and its permissions. The setup script creates the matching `mcp-observer` or `mcp-operator` account when missing, installs a virtual environment and systemd unit, preserves existing configuration, and starts the service.
+Use the operator profile only after reviewing the service identity and its permissions:
 
-## Scope
+```bash
+sudo ./scripts/setup.sh --profile operator
+```
 
-The first target is Coolify/Docker hosts. TrueNAS is intentionally deferred until the per-host deployment path is stable.
+The setup script creates the matching `mcp-observer` or `mcp-operator` account when missing, installs a virtual environment and systemd unit, preserves existing configuration, and starts the service.
 
 ## Security defaults
 
 - Observer/read-only capability is the default.
-- Operator actions are separate, allowlisted, auditable, and confirmation-gated.
-- Admin actions are disabled by default.
-- No arbitrary shell tool is exposed to agents.
-- Docker socket access is not enabled by default; if required, use a restricted socket proxy or local adapter.
-- Secrets are provided by the target host's Coolify runtime variables or an approved secret manager, never Git.
-- The MCP endpoint is private and authenticated.
+- Operator command execution is exposed only in the operator profile.
+- The profile is fixed for the process lifetime.
+- The service runs as a dedicated non-root Unix identity.
+- Commands use argv execution with no implicit shell.
+- Working directories, timeouts, argument count, environment, and output are bounded.
+- The service binds to loopback by default.
+- The MCP endpoint must remain on a private authenticated network.
+- Secrets are never stored in Git or returned in tool output.
 
-## Repository layout
+## Architecture
 
-- `docs/architecture.md` — native per-host deployment and trust boundaries.
-- `docs/native-deployment.md` — generic systemd installation and rollout.
-- `docs/coolify-networking.md` — legacy/reference networking notes; Coolify is managed by the gateway, not its runtime.
-- `docs/node-contract.md` — local host capability contract.
-- `docs/security-model.md` — observer/operator/admin policy.
-- `docs/profiles.md` — MCP profiles and Unix identity separation.
-- `docs/operations.md` — rollout and verification checklist.
-- `deploy/systemd/` — native service templates.
-- `deploy/coolify/` — retained as a deprecated reference only.
+```text
+src/mcp_gateway/
+├── domain/
+│   ├── commands.py       # immutable command value objects
+│   └── profiles.py       # profile rules
+├── application/
+│   ├── ports.py          # infrastructure interfaces
+│   └── services.py       # use cases
+├── infrastructure/
+│   ├── settings.py       # environment configuration
+│   ├── subprocess_runner.py
+│   └── host_info.py
+├── presentation/
+│   └── mcp_server.py     # MCP and HTTP adapter
+└── main.py               # composition root
+```
+
+Dependency direction is inward:
+
+```text
+presentation → application → domain
+infrastructure → application/domain
+main composes all layers
+```
+
+The domain and application layers do not import MCP, Starlette, psutil, subprocess, systemd, or any vendor-specific integration.
+
+## Profiles
+
+```text
+observer:
+  host_get_identity
+  host_get_status
+
+operator:
+  observer tools
+  execute_command
+```
+
+The operator profile does not mean root. The effective capability is the intersection of the MCP profile and the Unix identity used by the service.
 
 ## Implementation status
 
-The first executable slice is implemented:
+Implemented and tested:
 
-- Streamable HTTP at `/mcp` with stateless sessions;
+- Streamable HTTP MCP transport at `/mcp`;
 - `/healthz` and `/readyz`;
-- fixed startup profiles `observer` and `operator`;
+- fixed `observer` and `operator` profiles;
 - host identity and resource status tools;
-- Docker inventory tool when Docker is available to the runtime;
-- operator-only `execute_command` using argv, no implicit shell;
-- native systemd deployment templates for the host-control runtime;
-- a Docker image retained only for isolated development/tests, not as the production deployment model.
+- bounded operator command execution;
+- native systemd installation;
+- automated tests and CI.
 
-The native service executes as its configured Unix identity on the managed host. The effective capabilities therefore come from that user's UID/GID, groups, filesystem permissions, systemd policy, and any explicitly reviewed sudoers rules.
+## Documentation
 
-Production deployments must use the native systemd path described in `docs/native-deployment.md`. Coolify remains a managed target of the gateway, not the runtime for the gateway itself.
+- `docs/architecture.md` — layers and trust boundaries.
+- `docs/native-deployment.md` — generic systemd installation.
+- `docs/node-contract.md` — host identity and MCP contract.
+- `docs/security-model.md` — profile and capability policy.
+- `docs/profiles.md` — profile and Unix identity separation.
+- `docs/operations.md` — rollout and verification.
+- `deploy/systemd/` — service template.
 
-## Design rule
-
-Every gateway instance must pass health, MCP initialization, tool listing, repeated calls, timeout handling, and audit checks from both Hermes and OpenClaw before it is trusted for that host.
+Every installation must pass health, initialization, tool listing, repeated calls, timeout handling, and client validation before it is trusted.
