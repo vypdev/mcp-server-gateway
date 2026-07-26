@@ -55,7 +55,7 @@ The profile is selected at deployment/startup time, not by an MCP tool call:
 
 ```env
 MCP_PROFILE=observer
-MCP_HOST_ID=lab01
+MCP_HOST_ID=managed-host
 ```
 
 Changing from observer to operator requires an external deployment or service-management action performed by an authorized administrator. The observer process must not be able to perform that transition.
@@ -65,8 +65,8 @@ Changing from observer to operator requires an external deployment or service-ma
 Run one gateway instance per host. Select its profile at startup and keep that profile fixed for the lifetime of the process:
 
 ```text
-lab01-mcp-gateway → mcp-observer  → read-only
-lab01-mcp-gateway → mcp-operator  → observer + approved writes
+managed-host-mcp-gateway → mcp-observer  → read-only
+managed-host-mcp-gateway → mcp-operator  → observer + approved writes
 ```
 
 The operator profile includes observer capabilities. The observer profile cannot activate operator capabilities, change its own profile, or restart itself with stronger privileges. Changing profile requires an external deployment or service-management action performed by an authorized administrator.

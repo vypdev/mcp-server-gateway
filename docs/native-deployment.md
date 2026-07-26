@@ -1,19 +1,16 @@
-# Native deployment on the managed host
+# Native deployment on a managed host
 
-The production gateway for Lab01 runs directly on Lab01 as a systemd service. Coolify and Docker are managed targets; they are not the runtime for the gateway.
+The production gateway runs directly on the host it manages as a systemd service. Coolify and Docker, when present, are managed targets; they are not the runtime for the gateway.
 
 ## Target layout
 
 ```text
-ai-core
-  └── Hermes/OpenClaw MCP clients
-
-lab01
-  ├── mcp-server-gateway.service
-  ├── Unix identity: mcp-operator or mcp-observer
-  ├── Coolify
-  ├── Docker
-  └── system services
+MCP clients
+  └── Native MCP Server Gateway on a managed host
+        ├── Unix identity: mcp-observer or mcp-operator
+        ├── Docker/Coolify, when enabled
+        ├── system services
+        └── explicitly allowed filesystem paths
 ```
 
 Run one gateway instance per host. Select one fixed profile at startup:
@@ -23,11 +20,11 @@ MCP_PROFILE=observer
 MCP_PROFILE=operator
 ```
 
-For the initial Lab01 deployment use `operator` only if the Unix identity and its groups have been reviewed. The operator profile includes observer tools.
+The operator profile includes observer tools. It must run under the Unix identity whose permissions define the intended operating boundary.
 
-## 1. Inspect Lab01 before installation
+## 1. Inspect the target host
 
-Run these commands on Lab01 as an administrator. Do not paste secrets into chat or Git:
+Run these commands on the target host as an administrator:
 
 ```bash
 id
@@ -35,115 +32,97 @@ cat /etc/os-release
 command -v systemctl
 python3 --version
 systemctl --version
-docker version
-id mcp-operator
-getent group docker
+command -v docker && docker version || true
+getent group docker || true
 ss -ltnp
 ```
 
-Record the results locally. Confirm the private address and choose a dedicated MCP port that is not already used.
+Choose a private bind address, an unused port, and the filesystem paths the gateway may access.
 
-## 2. Create the Unix identity
+## 2. Install with the setup script
 
-Create a dedicated account rather than using root:
-
-```bash
-sudo useradd --system --create-home --home-dir /var/lib/mcp-server-gateway \
-  --shell /usr/sbin/nologin mcp-operator
-sudo install -d -o mcp-operator -g mcp-operator -m 0750 \
-  /var/lib/mcp-server-gateway /opt/mcp-server-gateway
-```
-
-Do not add the account to the `docker` group until Docker write access is explicitly accepted. Membership in `docker` is effectively root-equivalent on many hosts.
-
-## 3. Install the application
-
-Use a controlled checkout of the public `master` branch:
+Clone the repository and run the setup script as root:
 
 ```bash
-sudo git clone --branch master --depth 1 \
-  https://github.com/vypdev/mcp-server-gateway.git \
-  /opt/mcp-server-gateway
-sudo python3 -m venv /opt/mcp-server-gateway/.venv
-sudo /opt/mcp-server-gateway/.venv/bin/pip install /opt/mcp-server-gateway
-sudo chown -R root:root /opt/mcp-server-gateway
-sudo chmod -R a=rX /opt/mcp-server-gateway
+git clone --branch master --depth 1 \
+  https://github.com/vypdev/mcp-server-gateway.git
+cd mcp-server-gateway
+sudo ./scripts/setup.sh --profile observer
 ```
 
-The service user needs read access to the installation and write access only to its explicitly approved working directories.
-
-## 4. Configure the fixed profile
-
-Create `/etc/mcp-server-gateway/gateway.env` as root with mode `0600`:
+For an operator deployment:
 
 ```bash
-sudo install -d -m 0750 -o root -g root /etc/mcp-server-gateway
-sudo install -m 0600 /dev/null /etc/mcp-server-gateway/gateway.env
-sudoedit /etc/mcp-server-gateway/gateway.env
+sudo ./scripts/setup.sh --profile operator
 ```
 
-Use values appropriate for Lab01:
+The script is idempotent. It will:
+
+- validate Linux, Python, and systemd prerequisites;
+- create `mcp-observer` or `mcp-operator` when missing;
+- install the application into `/opt/mcp-server-gateway`;
+- create a virtual environment;
+- install the package;
+- create a root-owned environment file if missing;
+- install a profile-specific systemd unit;
+- enable and start the service;
+- verify the local health endpoint.
+
+The script does not add the account to the `docker` group, grant sudo, modify firewall rules, or overwrite an existing environment file without an explicit reconfiguration flag.
+
+## 3. Review generated configuration
+
+The setup script creates:
+
+```text
+/etc/mcp-server-gateway/gateway.env
+/etc/systemd/system/mcp-server-gateway.service
+/opt/mcp-server-gateway/.venv/
+/var/lib/mcp-server-gateway/
+```
+
+Review `/etc/mcp-server-gateway/gateway.env` before exposing the endpoint:
 
 ```ini
-MCP_HOST_ID=lab01
-MCP_PROFILE=operator
-MCP_HOST=<LAB01_PRIVATE_IP>
-MCP_PORT=<UNUSED_PRIVATE_PORT>
+MCP_HOST_ID=<stable-host-identifier>
+MCP_PROFILE=observer
+MCP_HOST=127.0.0.1
+MCP_PORT=8000
 MCP_ALLOWED_CWDS=/var/lib/mcp-server-gateway
 MCP_COMMAND_TIMEOUT_SECONDS=30
 MCP_MAX_OUTPUT_BYTES=262144
 MCP_MAX_COMMAND_ARGS=64
 ```
 
-Do not commit this file. Any credentials needed by future Coolify adapters remain in this root-owned file or an approved secret manager.
+For a remote MCP client, change `MCP_HOST` to the host's private interface and restrict the firewall to the client's private address. Do not bind publicly without private transport and authentication.
 
-## 5. Install systemd
-
-Install `deploy/systemd/mcp-server-gateway.service`:
-
-```bash
-sudo install -m 0644 deploy/systemd/mcp-server-gateway.service \
-  /etc/systemd/system/mcp-server-gateway.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now mcp-server-gateway.service
-```
-
-Verify locally on Lab01:
+## 4. Verify the native identity
 
 ```bash
 systemctl status mcp-server-gateway.service --no-pager
-curl --fail http://127.0.0.1:<UNUSED_PRIVATE_PORT>/healthz
-curl --fail http://127.0.0.1:<UNUSED_PRIVATE_PORT>/readyz
+curl --fail http://127.0.0.1:8000/healthz
+curl --fail http://127.0.0.1:8000/readyz
 journalctl -u mcp-server-gateway.service -n 100 --no-pager
 ```
 
-## 6. Restrict network access
-
-Allow the MCP port only from the private address of `ai-core`. Do not publish it to the Internet. Use a private VLAN, WireGuard, Tailscale, or equivalent. Add TLS and client authentication at a private reverse proxy or implement MCP authentication before exposing the endpoint beyond the trusted host network.
-
-## 7. Verify capabilities
-
-From Lab01, validate the effective identity:
-
-```bash
-sudo -u mcp-operator id
-sudo -u mcp-operator docker ps
-```
-
-The MCP `host_get_identity` result must match the expected Lab01 host, not a container. Test `execute_command` with a harmless command first:
+The MCP `host_get_identity` result must identify the actual host and expected Unix UID, not a container. In operator mode, start with a harmless command:
 
 ```json
 {"argv":["id"],"cwd":"/var/lib/mcp-server-gateway","timeout_seconds":5}
 ```
 
-Then test read-only Docker, service status, and bounded logs. Do not enable disruptive operations until repeated MCP sessions succeed.
+Then test read-only service, Docker, and Coolify operations. Do not grant Docker or sudo access until the resulting capability boundary is explicitly accepted.
+
+## 5. Network and authentication
+
+Expose the MCP endpoint only over a private VLAN, VPN, Tailscale, WireGuard, or equivalent. Allow the MCP port only from approved client addresses. Add TLS and client authentication at a private reverse proxy or implement MCP authentication before exposing the endpoint outside the trusted network.
 
 ## Rollback
 
 ```bash
 sudo systemctl disable --now mcp-server-gateway.service
-sudo rm /etc/systemd/system/mcp-server-gateway.service
+sudo rm -f /etc/systemd/system/mcp-server-gateway.service
 sudo systemctl daemon-reload
 ```
 
-Keep the previous MCP configuration unchanged until health, initialization, tool listing, repeated calls, and Hermes/OpenClaw validation all pass.
+Keep the previous MCP configuration unchanged until health, initialization, tool listing, repeated calls, and client validation all pass.

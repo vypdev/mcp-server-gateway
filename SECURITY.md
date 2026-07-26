@@ -15,6 +15,6 @@ An MCP client cannot change the profile. Profile changes require an external sys
 
 ## Deployment
 
-The supported production runtime is a native systemd service on the managed host, with a dedicated Unix identity and no root execution by default. Container files are retained only for isolated development/tests; they are not the Lab01 deployment model.
+The supported production runtime is a native systemd service on the managed host, with a dedicated Unix identity and no root execution by default. Container files are retained only for isolated development/tests; they are not the production deployment model.
 
 Never commit credentials, tokens, SSH keys, Docker socket exports, or Coolify environment files.

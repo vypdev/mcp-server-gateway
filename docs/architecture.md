@@ -5,11 +5,11 @@
 `mcp-server-gateway` runs directly on the server it manages as a systemd service. Hermes and OpenClaw connect to each remote instance as MCP clients.
 
 ```text
-Hermes/OpenClaw on ai-core
+MCP clients
        │ private authenticated MCP/HTTPS
-       ├──────────────► Native MCP Gateway on Lab01
-       ├──────────────► Native MCP Gateway on NAS01
-       └──────────────► future Native MCP Gateway on TrueNAS
+       ├──────────────► Native MCP Gateway on a managed host
+       ├──────────────► Native MCP Gateway on another managed host
+       └──────────────► future Native MCP Gateway on another platform
 ```
 
 There is no central aggregator and no requirement to run the gateway inside Coolify or Docker. Coolify and Docker are managed targets of each native gateway.
@@ -33,7 +33,7 @@ Hermes/OpenClaw do not receive the host's SSH private key, Docker credentials, o
 The native gateway may use host-local adapters internally:
 
 ```text
-Native MCP Gateway on Lab01
+Native MCP Gateway on a managed host
   ├── Docker adapter
   ├── Coolify API adapter
   ├── host health adapter

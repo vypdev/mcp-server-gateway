@@ -7,7 +7,7 @@ services:
     environment:
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
-      MCP_HOST_ID: ${MCP_HOST_ID:-lab01}
+      MCP_HOST_ID: ${MCP_HOST_ID:-managed-host}
       MCP_PROFILE: ${MCP_PROFILE:-observer}
       MCP_ALLOWED_CWDS: ${MCP_ALLOWED_CWDS:-/workspace}
     ports:

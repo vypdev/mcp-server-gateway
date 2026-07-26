@@ -5,11 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=mcp-operator
-Group=mcp-operator
-WorkingDirectory=/opt/mcp-server-gateway
-EnvironmentFile=/etc/mcp-server-gateway/gateway.env
-ExecStart=/opt/mcp-server-gateway/.venv/bin/mcp-server-gateway
+User=@MCP_USER@
+Group=@MCP_USER@
+WorkingDirectory=@INSTALL_DIR@
+EnvironmentFile=@CONFIG_FILE@
+ExecStart=@INSTALL_DIR@/.venv/bin/mcp-server-gateway
 Restart=on-failure
 RestartSec=5s
 
@@ -18,7 +18,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=read-only
 ProtectSystem=full
-ReadWritePaths=/var/lib/mcp-server-gateway
+ReadWritePaths=@STATE_DIR@
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 CapabilityBoundingSet=
 

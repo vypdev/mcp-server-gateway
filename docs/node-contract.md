@@ -3,9 +3,9 @@
 Every target server runs one gateway instance with a host-specific identity and policy.
 
 ```yaml
-id: nas01
-host: nas01
-endpoint: https://nas01-mcp.<private-domain>/mcp
+id: managed-host
+host: managed-host
+endpoint: https://gateway.<private-domain>/mcp
 transport: streamable-http
 capabilities:
   observer:

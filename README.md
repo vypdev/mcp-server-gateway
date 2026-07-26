@@ -5,15 +5,26 @@ A per-host MCP server for giving Hermes and OpenClaw controlled access to remote
 The gateway is deployed **natively on the server it manages** as a systemd service. It is not a central aggregator and it is not deployed inside Coolify or Docker for the host-control use case.
 
 ```text
-Hermes/OpenClaw on ai-core
+Hermes/OpenClaw on a client host
         │
-        ├── MCP Server Gateway on NAS01
-        ├── MCP Server Gateway on Lab01
-        ├── MCP Server Gateway on another lab host
-        └── future MCP Server Gateway on TrueNAS
+        ├── Native MCP Server Gateway on a managed host
+        ├── Native MCP Server Gateway on another managed host
+        └── future Native MCP Server Gateway on another platform
 ```
 
 Each instance is a local authority for one host. It can inspect and operate that host's Docker/Coolify services without giving Hermes or OpenClaw direct SSH access, shell access, or Docker credentials.
+
+## Quick start
+
+On a Linux host with systemd, clone the repository and run the native setup script as root:
+
+```bash
+git clone --branch master --depth 1 https://github.com/vypdev/mcp-server-gateway.git
+cd mcp-server-gateway
+sudo ./scripts/setup.sh --profile observer
+```
+
+Use `--profile operator` only after reviewing the target Unix identity and its permissions. The setup script creates the matching `mcp-observer` or `mcp-operator` account when missing, installs a virtual environment and systemd unit, preserves existing configuration, and starts the service.
 
 ## Scope
 
@@ -32,7 +43,7 @@ The first target is Coolify/Docker hosts. TrueNAS is intentionally deferred unti
 ## Repository layout
 
 - `docs/architecture.md` — native per-host deployment and trust boundaries.
-- `docs/native-deployment.md` — systemd installation and Lab01 rollout.
+- `docs/native-deployment.md` — generic systemd installation and rollout.
 - `docs/coolify-networking.md` — legacy/reference networking notes; Coolify is managed by the gateway, not its runtime.
 - `docs/node-contract.md` — local host capability contract.
 - `docs/security-model.md` — observer/operator/admin policy.
@@ -52,11 +63,11 @@ The first executable slice is implemented:
 - Docker inventory tool when Docker is available to the runtime;
 - operator-only `execute_command` using argv, no implicit shell;
 - native systemd deployment templates for the host-control runtime;
-- a Docker image retained only for isolated development/tests, not as the Lab01 deployment model.
+- a Docker image retained only for isolated development/tests, not as the production deployment model.
 
 The native service executes as its configured Unix identity on the managed host. The effective capabilities therefore come from that user's UID/GID, groups, filesystem permissions, systemd policy, and any explicitly reviewed sudoers rules.
 
-The Lab01 deployment must use the native systemd path described in `docs/native-deployment.md`. Coolify remains a managed target of the gateway, not the runtime for the gateway itself.
+Production deployments must use the native systemd path described in `docs/native-deployment.md`. Coolify remains a managed target of the gateway, not the runtime for the gateway itself.
 
 ## Design rule
 
