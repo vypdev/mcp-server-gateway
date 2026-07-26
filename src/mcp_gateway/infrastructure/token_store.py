@@ -16,8 +16,9 @@ from mcp_gateway.application.authentication import IssuedToken, TokenIdentity
 
 
 class JsonTokenStore:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, lock_path: Path | None = None) -> None:
         self.path = path
+        self.lock_path = lock_path or path.with_name(f".{path.name}.lock")
 
     def issue(self, client_id: str) -> IssuedToken:
         token = f"mcp_{secrets.token_urlsafe(32)}"
@@ -53,8 +54,8 @@ class JsonTokenStore:
     @contextmanager
     def _locked(self, *, exclusive: bool) -> Iterator[None]:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        lock_path = self.path.with_name(f".{self.path.name}.lock")
-        with lock_path.open("a+", encoding="utf-8") as lock_file:
+        self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.lock_path.open("a+", encoding="utf-8") as lock_file:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
             try:
                 yield

@@ -19,7 +19,7 @@ class InstallationLayout:
     service_file: Path = Path("/etc/systemd/system/mcp-server-gateway.service")
     state_dir: Path = Path("/var/lib/mcp-server-gateway")
     auth_file: Path = Path("/etc/mcp-server-gateway/tokens.json")
-    auth_lock_file: Path = Path("/etc/mcp-server-gateway/.tokens.json.lock")
+    auth_lock_file: Path = Path("/var/lib/mcp-server-gateway/.tokens.json.lock")
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ class SystemDiagnostics:
         auth_file = Path(config.get("MCP_AUTH_FILE", str(self.layout.auth_file)))
         checks.append(self._path_check("token store", auth_file, "file"))
         checks.append(self._secure_token_store_check(auth_file))
-        auth_lock_file = auth_file.parent / f".{auth_file.name}.lock"
+        auth_lock_file = Path(config.get("MCP_AUTH_LOCK_FILE", str(self.layout.auth_lock_file)))
         checks.append(self._path_check("token store lock", auth_lock_file, "file"))
         checks.append(self._token_lock_check(auth_lock_file))
         checks.append(self._service_user_check(config))

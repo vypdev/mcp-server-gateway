@@ -35,6 +35,7 @@ def test_doctor_passes_for_complete_installation(tmp_path, monkeypatch):
     config.write_text(
         "MCP_PROFILE=observer\nMCP_HOST=127.0.0.1\nMCP_PORT=8000\n"
         f"MCP_AUTH_FILE={auth}\n"
+        f"MCP_AUTH_LOCK_FILE={lock}\n"
     )
     config.chmod(0o600)
     unit = tmp_path / "service.unit"

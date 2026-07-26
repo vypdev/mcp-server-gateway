@@ -20,7 +20,7 @@ def build_server():
     )
     host_info = PsutilHostInfoProvider(settings.host_id, settings.profile.value)
     execute_command = ExecuteCommand(settings.profile, runner)
-    authentication = AuthenticationService(JsonTokenStore(settings.auth_file))
+    authentication = AuthenticationService(JsonTokenStore(settings.auth_file, settings.auth_lock_file))
     return create_server(
         settings,
         host_info,

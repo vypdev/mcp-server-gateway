@@ -19,6 +19,7 @@ class Settings:
     bind_host: str = "127.0.0.1"
     port: int = 8000
     auth_file: Path = Path("/etc/mcp-server-gateway/tokens.json")
+    auth_lock_file: Path = Path("/var/lib/mcp-server-gateway/.tokens.json.lock")
 
     def __post_init__(self) -> None:
         if not self.allowed_cwds:
@@ -50,4 +51,5 @@ class Settings:
             bind_host=os.getenv("MCP_HOST", "127.0.0.1"),
             port=int(os.getenv("MCP_PORT", "8000")),
             auth_file=Path(os.getenv("MCP_AUTH_FILE", "/etc/mcp-server-gateway/tokens.json")),
+            auth_lock_file=Path(os.getenv("MCP_AUTH_LOCK_FILE", "/var/lib/mcp-server-gateway/.tokens.json.lock")),
         )

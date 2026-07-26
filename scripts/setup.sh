@@ -7,7 +7,7 @@ INSTALL_DIR="/opt/mcp-server-gateway"
 CONFIG_DIR="/etc/mcp-server-gateway"
 STATE_DIR="/var/lib/mcp-server-gateway"
 AUTH_FILE="$CONFIG_DIR/tokens.json"
-AUTH_LOCK_FILE="$CONFIG_DIR/.tokens.json.lock"
+AUTH_LOCK_FILE="$STATE_DIR/.tokens.json.lock"
 MANAGED_USER_MARKER="$CONFIG_DIR/managed-user"
 HOST_ID="$(hostname -s)"
 BIND_HOST="127.0.0.1"
@@ -267,7 +267,7 @@ if [[ -e "$CONFIG_FILE" && "$RECONFIGURE" -ne 1 ]]; then
   configured_auth_file="$(awk -F= '$1 == "MCP_AUTH_FILE" {print $2; exit}' "$CONFIG_FILE" || true)"
   [[ -n "$configured_auth_file" ]] || fail "$CONFIG_FILE predates authentication; rerun with --reconfigure after reviewing the generated backup"
   AUTH_FILE="$configured_auth_file"
-  AUTH_LOCK_FILE="$(dirname "$AUTH_FILE")/.$(basename "$AUTH_FILE").lock"
+  AUTH_LOCK_FILE="$STATE_DIR/.tokens.json.lock"
   printf 'setup: preserving existing %s and its effective endpoint\n' "$CONFIG_FILE"
 else
   [[ "$RECONFIGURE" -eq 1 && -e "$CONFIG_FILE" ]] && cp -a "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
@@ -283,7 +283,8 @@ else
     "MCP_MAX_COMMAND_ARGS=64" \
     "MCP_HOST=$BIND_HOST" \
     "MCP_PORT=$PORT" \
-    "MCP_AUTH_FILE=$AUTH_FILE" > "$tmp_config"
+    "MCP_AUTH_FILE=$AUTH_FILE" \
+    "MCP_AUTH_LOCK_FILE=$AUTH_LOCK_FILE" > "$tmp_config"
   install -o root -g root -m 0600 "$tmp_config" "$CONFIG_FILE"
 fi
 [[ "$AUTH_FILE" == "$CONFIG_DIR/"* ]] || fail "MCP_AUTH_FILE must remain inside $CONFIG_DIR"
