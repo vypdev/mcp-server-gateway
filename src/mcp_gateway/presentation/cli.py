@@ -43,7 +43,10 @@ def main(
             if os.geteuid() != 0:
                 print("error: authentication changes require root; use sudo mcp-gateway", file=sys.stderr)
                 return 1
-            auth_service = AuthenticationService(JsonTokenStore(Path("/etc/mcp-server-gateway/tokens.json")))
+            auth_service = AuthenticationService(JsonTokenStore(
+                Path("/etc/mcp-server-gateway/tokens.json"),
+                Path("/var/lib/mcp-server-gateway/.tokens.json.lock"),
+            ))
         try:
             if args.command == "authenticate":
                 issued = auth_service.authenticate(args.client_id)
