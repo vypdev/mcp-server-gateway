@@ -36,3 +36,8 @@ class ServiceController(Protocol):
 class DiagnosticsProvider(Protocol):
     def run(self) -> DoctorReport:
         ...
+
+
+class InstallationRemover(Protocol):
+    def remove(self) -> None:
+        ...

@@ -53,6 +53,12 @@ class SystemdServiceController:
     def restart(self) -> None:
         self._run("restart", self.service_name)
 
+    def disable(self) -> None:
+        self._run("disable", "--now", self.service_name, check=False)
+
+    def daemon_reload(self) -> None:
+        self._run("daemon-reload")
+
     def _run(self, *arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         try:
             result = subprocess.run(

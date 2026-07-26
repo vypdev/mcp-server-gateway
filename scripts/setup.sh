@@ -6,6 +6,7 @@ RECONFIGURE=0
 INSTALL_DIR="/opt/mcp-server-gateway"
 CONFIG_DIR="/etc/mcp-server-gateway"
 STATE_DIR="/var/lib/mcp-server-gateway"
+MANAGED_USER_MARKER="$CONFIG_DIR/managed-user"
 HOST_ID="$(hostname -s)"
 BIND_HOST="127.0.0.1"
 PORT="8000"
@@ -100,9 +101,16 @@ TEMPLATE="$REPO_ROOT/deploy/systemd/mcp-server-gateway.service"
 [[ -f "$REPO_ROOT/pyproject.toml" ]] || fail "run this script from a repository checkout"
 [[ -f "$TEMPLATE" ]] || fail "missing systemd service template: $TEMPLATE"
 
+USER_CREATED=0
+if [[ -r "$MANAGED_USER_MARKER" ]] \
+  && [[ "$(awk -F= '$1 == "MCP_SERVICE_USER" {print $2; exit}' "$MANAGED_USER_MARKER")" == "$SERVICE_USER" ]] \
+  && [[ "$(awk -F= '$1 == "MCP_SERVICE_USER_CREATED" {print $2; exit}' "$MANAGED_USER_MARKER")" == "1" ]]; then
+  USER_CREATED=1
+fi
 if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   useradd --system --user-group --create-home \
     --home-dir "$STATE_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
+  USER_CREATED=1
   printf 'setup: created Unix user %s\n' "$SERVICE_USER"
 else
   printf 'setup: using existing Unix user %s\n' "$SERVICE_USER"
@@ -135,7 +143,9 @@ else
 fi
 
 CONFIG_FILE="$CONFIG_DIR/gateway.env"
+tmp_config=""
 tmp_unit=""
+tmp_marker=""
 if [[ -e "$CONFIG_FILE" && "$RECONFIGURE" -ne 1 ]]; then
   current_profile="$(awk -F= '$1 == "MCP_PROFILE" {print $2; exit}' "$CONFIG_FILE" || true)"
   [[ "$current_profile" == "$PROFILE" ]] || fail "$CONFIG_FILE already exists with profile '$current_profile'; use --reconfigure only after reviewing it"
@@ -150,7 +160,7 @@ else
   [[ "$RECONFIGURE" -eq 1 && -e "$CONFIG_FILE" ]] && cp -a "$CONFIG_FILE" "$CONFIG_FILE.bak.$(date +%Y%m%d%H%M%S)"
   [[ -n "$ALLOWED_CWDS" ]] || ALLOWED_CWDS="$STATE_DIR"
   tmp_config="$(mktemp)"
-  trap 'rm -f "$tmp_config" "$tmp_unit"' EXIT
+  trap 'rm -f "$tmp_config" "$tmp_unit" "$tmp_marker"' EXIT
   printf '%s\n' \
     "MCP_HOST_ID=$HOST_ID" \
     "MCP_PROFILE=$PROFILE" \
@@ -162,6 +172,15 @@ else
     "MCP_PORT=$PORT" > "$tmp_config"
   install -o root -g root -m 0600 "$tmp_config" "$CONFIG_FILE"
 fi
+
+trap 'rm -f "$tmp_config" "$tmp_unit" "$tmp_marker"' EXIT
+tmp_marker="$(mktemp)"
+printf '%s\n' \
+  "MCP_SERVICE_USER=$SERVICE_USER" \
+  "MCP_SERVICE_USER_CREATED=$USER_CREATED" > "$tmp_marker"
+install -o root -g root -m 0600 "$tmp_marker" "$MANAGED_USER_MARKER"
+rm -f "$tmp_marker"
+tmp_marker=""
 
 escape_sed() {
   printf '%s' "$1" | sed 's/[&|]/\\&/g'

@@ -1,5 +1,5 @@
 from .management import GatewayManagement
-from .ports import CommandRunner, DiagnosticsProvider, HostInfoProvider, ServiceController
+from .ports import CommandRunner, DiagnosticsProvider, HostInfoProvider, InstallationRemover, ServiceController
 from .services import ExecuteCommand
 
 __all__ = [
@@ -8,5 +8,6 @@ __all__ = [
     "ExecuteCommand",
     "GatewayManagement",
     "HostInfoProvider",
+    "InstallationRemover",
     "ServiceController",
 ]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Sequence
 
@@ -8,9 +9,10 @@ from mcp_gateway.application.management import GatewayManagement
 from mcp_gateway.application.ports import DiagnosticsProvider
 from mcp_gateway.domain.service import ActionResult, DoctorReport, ServiceStatus
 from mcp_gateway.infrastructure.diagnostics import SystemDiagnostics
+from mcp_gateway.infrastructure.installation_remover import SystemInstallationRemover
 from mcp_gateway.infrastructure.systemd_controller import ServiceCommandError, SystemdServiceController
 
-_COMMANDS = ("doctor", "status", "start", "restart", "stop")
+_COMMANDS = ("doctor", "status", "start", "restart", "stop", "uninstall")
 
 
 def main(
@@ -21,14 +23,31 @@ def main(
 ) -> int:
     parser = argparse.ArgumentParser(prog="mcp-gateway", description="Manage the MCP Server Gateway service")
     parser.add_argument("command", choices=_COMMANDS)
+    parser.add_argument("--yes", action="store_true", help="confirm destructive uninstall")
     args = parser.parse_args(argv)
+    if args.yes and args.command != "uninstall":
+        parser.error("--yes is only valid with uninstall")
 
     if management is None:
+        if args.command == "uninstall" and os.geteuid() != 0:
+            print("error: uninstall requires root; use sudo mcp-gateway uninstall", file=sys.stderr)
+            return 1
         controller = SystemdServiceController()
         diagnostics = diagnostics or SystemDiagnostics(controller)
-        management = GatewayManagement(controller, diagnostics)
+        remover = SystemInstallationRemover(controller)
+        management = GatewayManagement(controller, diagnostics, remover)
 
     try:
+        if args.command == "uninstall":
+            if not args.yes:
+                if not sys.stdin.isatty():
+                    print("error: non-interactive uninstall requires --yes", file=sys.stderr)
+                    return 2
+                answer = input("This removes the service, installation, configuration, and state. Type UNINSTALL to continue: ")
+                if answer.strip() != "UNINSTALL":
+                    print("uninstall cancelled", file=sys.stderr)
+                    return 1
+            return _print_action(management.uninstall(confirmed=True))
         if args.command == "doctor":
             report = diagnostics.run() if diagnostics is not None else management.doctor()
             return _print_doctor(report)
@@ -36,7 +55,7 @@ def main(
             return _print_status(management.status())
         result = getattr(management, args.command)()
         return _print_action(result)
-    except (ServiceCommandError, OSError) as exc:
+    except (ServiceCommandError, OSError, RuntimeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

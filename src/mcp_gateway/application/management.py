@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-from mcp_gateway.application.ports import DiagnosticsProvider, ServiceController
+from mcp_gateway.application.ports import DiagnosticsProvider, InstallationRemover, ServiceController
 from mcp_gateway.domain.service import ActionResult, DoctorReport, ServiceStatus
 
 
 class GatewayManagement:
-    def __init__(self, controller: ServiceController, diagnostics: DiagnosticsProvider):
+    def __init__(
+        self,
+        controller: ServiceController,
+        diagnostics: DiagnosticsProvider,
+        remover: InstallationRemover | None = None,
+    ):
         self._controller = controller
         self._diagnostics = diagnostics
+        self._remover = remover
 
     def status(self) -> ServiceStatus:
         return self._controller.status()
@@ -30,6 +36,14 @@ class GatewayManagement:
 
     def doctor(self) -> DoctorReport:
         return self._diagnostics.run()
+
+    def uninstall(self, *, confirmed: bool) -> ActionResult:
+        if not confirmed:
+            return ActionResult(False, False, "uninstall requires explicit confirmation")
+        if self._remover is None:
+            return ActionResult(False, False, "uninstall is not configured")
+        self._remover.remove()
+        return ActionResult(True, True, "service and managed installation removed")
 
     def _after_change(self, verb: str, *, expect_active: bool = True) -> ActionResult:
         status = self._controller.status()

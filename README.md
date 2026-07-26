@@ -117,9 +117,10 @@ mcp-gateway status
 sudo mcp-gateway start
 sudo mcp-gateway restart
 sudo mcp-gateway stop
+sudo mcp-gateway uninstall --yes
 ```
 
-`start` and `stop` are idempotent: they report when the requested state is already active. `doctor` checks the unit, configuration, Unix identity, installed executable, service state, and health endpoint without printing secret values.
+`start` and `stop` are idempotent: they report when the requested state is already active. `doctor` checks the unit, configuration, Unix identity, installed executable, service state, and health endpoint without printing secret values. `uninstall` stops and disables the unit, then removes the managed service unit, installation directory, configuration, state, and CLI symlink. It is interactive by default and requires typing `UNINSTALL`; `--yes` is required in non-interactive automation. A Unix service account is removed only when the installer created and marked that account; pre-existing accounts are preserved.
 
 ## Implementation status
 

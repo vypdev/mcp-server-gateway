@@ -102,9 +102,10 @@ mcp-gateway status
 sudo mcp-gateway start
 sudo mcp-gateway restart
 sudo mcp-gateway stop
+sudo mcp-gateway uninstall --yes
 ```
 
-`systemctl enable --now` makes the service start automatically at boot. `Restart=on-failure` recovers from unexpected process failures and ordinary host reboots.
+`systemctl enable --now` makes the service start automatically at boot. `Restart=on-failure` recovers from unexpected process failures and ordinary host reboots. `uninstall` is destructive: it requires root and explicit confirmation, and removes only the Unix service account that this installer created and marked.
 
 ## Verify the native identity
 
