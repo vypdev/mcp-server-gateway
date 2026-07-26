@@ -17,6 +17,7 @@ test = ["pytest>=8,<9"]
 
 [project.scripts]
 mcp-server-gateway = "mcp_gateway.main:main"
+mcp-gateway = "mcp_gateway.presentation.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_gateway"]

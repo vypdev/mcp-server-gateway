@@ -20,7 +20,7 @@ MCP_PROFILE=observer
 MCP_PROFILE=operator
 ```
 
-## 1. Inspect the target host
+Before installation, confirm the host provides Linux, systemd, Python 3.11+, and an unused private bind address/port:
 
 ```bash
 id
@@ -31,9 +31,13 @@ systemctl --version
 ss -ltnp
 ```
 
-Choose a private bind address, an unused port, and the filesystem paths the gateway may access.
+The shortest supported installation path is:
 
-## 2. Install with the setup script
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vypdev/mcp-server-gateway/master/install.sh)"
+```
+
+The bootstrap clones the selected repository revision into a temporary directory, runs `scripts/setup.sh`, and removes the temporary checkout. The inspected clone-and-run path remains supported:
 
 ```bash
 git clone --branch master --depth 1 \
@@ -62,7 +66,7 @@ The script is idempotent. It will:
 
 The script does not grant additional host privileges, alter network policy, or overwrite an existing environment file without an explicit reconfiguration flag.
 
-## 3. Review generated configuration
+## Review generated configuration
 
 The setup script creates:
 
@@ -88,7 +92,21 @@ MCP_MAX_COMMAND_ARGS=64
 
 For remote clients, bind to a private interface and restrict the firewall to approved client addresses. Do not bind publicly without private transport and authentication.
 
-## 4. Verify the native identity
+## Service management
+
+The setup also installs `/usr/local/bin/mcp-gateway`. Use it for lifecycle and diagnostics:
+
+```bash
+mcp-gateway doctor
+mcp-gateway status
+sudo mcp-gateway start
+sudo mcp-gateway restart
+sudo mcp-gateway stop
+```
+
+`systemctl enable --now` makes the service start automatically at boot. `Restart=on-failure` recovers from unexpected process failures and ordinary host reboots.
+
+## Verify the native identity
 
 ```bash
 systemctl status mcp-server-gateway.service --no-pager
@@ -105,7 +123,7 @@ The `host_get_identity` result must identify the actual host and expected Unix U
 
 Then test read-only diagnostics and bounded command execution. Do not grant extra host privileges until the resulting capability boundary is explicitly accepted.
 
-## 5. Network and authentication
+## Network and authentication
 
 Expose the MCP endpoint only over a private authenticated transport. Allow the service port only from approved client addresses. Add TLS and client authentication at a private reverse proxy or implement MCP authentication before exposing the endpoint outside the trusted network.
 

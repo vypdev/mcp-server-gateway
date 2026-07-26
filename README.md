@@ -16,7 +16,24 @@ Native MCP Server Gateway
 
 The gateway is not a central aggregator. Each installation is a local authority for exactly one host and runs as a system service under a dedicated Unix identity.
 
-## Quick start
+## Quick install
+
+For the shortest installation path, review `install.sh` and run it through Bash from the selected repository branch:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vypdev/mcp-server-gateway/master/install.sh)"
+```
+
+The bootstrap clones the repository into a temporary directory, invokes `scripts/setup.sh`, and removes the temporary checkout. Pass setup options after `--` when invoking Bash explicitly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vypdev/mcp-server-gateway/master/install.sh \
+  | /bin/bash -s -- --profile operator
+```
+
+The clone-and-run path remains available for users who want to inspect the repository first.
+
+## Clone and setup
 
 On a Linux host with systemd:
 
@@ -90,6 +107,20 @@ operator:
 
 The operator profile does not mean root. The effective capability is the intersection of the MCP profile and the Unix identity used by the service.
 
+## Service management
+
+The installer enables the service for automatic startup at boot and configures restart after unexpected failures. After installation, use the global CLI:
+
+```bash
+mcp-gateway doctor
+mcp-gateway status
+sudo mcp-gateway start
+sudo mcp-gateway restart
+sudo mcp-gateway stop
+```
+
+`start` and `stop` are idempotent: they report when the requested state is already active. `doctor` checks the unit, configuration, Unix identity, installed executable, service state, and health endpoint without printing secret values.
+
 ## Implementation status
 
 Implemented and tested:
@@ -100,6 +131,8 @@ Implemented and tested:
 - host identity and resource status tools;
 - bounded operator command execution;
 - native systemd installation;
+- one-line bootstrap installer;
+- `mcp-gateway` lifecycle and diagnostics CLI;
 - automated tests and CI.
 
 ## Documentation

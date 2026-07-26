@@ -125,6 +125,15 @@ fi
 chown -R root:root "$INSTALL_DIR/.venv"
 chmod -R a=rX "$INSTALL_DIR/.venv"
 
+CLI_TARGET="$INSTALL_DIR/.venv/bin/mcp-gateway"
+CLI_PATH="/usr/local/bin/mcp-gateway"
+[[ -x "$CLI_TARGET" ]] || fail "mcp-gateway CLI was not installed: $CLI_TARGET"
+if [[ -e "$CLI_PATH" || -L "$CLI_PATH" ]]; then
+  [[ -L "$CLI_PATH" && "$(readlink "$CLI_PATH")" == "$CLI_TARGET" ]] || fail "$CLI_PATH already exists and is not managed by this installation"
+else
+  ln -s "$CLI_TARGET" "$CLI_PATH"
+fi
+
 CONFIG_FILE="$CONFIG_DIR/gateway.env"
 tmp_unit=""
 if [[ -e "$CONFIG_FILE" && "$RECONFIGURE" -ne 1 ]]; then
@@ -192,4 +201,5 @@ PY
 
 printf 'setup: installed and started mcp-server-gateway\n'
 printf 'setup: profile=%s user=%s endpoint=%s\n' "$PROFILE" "$SERVICE_USER" "$health_url"
+printf 'setup: CLI available as %s\n' "$CLI_PATH"
 printf 'setup: review %s before allowing remote access\n' "$CONFIG_FILE"
