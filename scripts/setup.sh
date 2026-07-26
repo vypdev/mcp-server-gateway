@@ -12,6 +12,61 @@ BIND_HOST="127.0.0.1"
 PORT="8000"
 ALLOWED_CWDS=""
 
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  C_RESET=$'\033[0m'
+  C_DIM=$'\033[2m'
+  C_CYAN=$'\033[36m'
+  C_GREEN=$'\033[32m'
+  C_YELLOW=$'\033[33m'
+  C_RED=$'\033[31m'
+else
+  C_RESET=""
+  C_DIM=""
+  C_CYAN=""
+  C_GREEN=""
+  C_YELLOW=""
+  C_RED=""
+fi
+STEP=0
+INSTALL_STARTED_AT=0
+
+banner() {
+  printf '\n%s╭────────────────────────────────────────────────────────────╮%s\n' "$C_CYAN" "$C_RESET"
+  printf '%s│  MCP SERVER GATEWAY // NATIVE INSTALLER                  │%s\n' "$C_CYAN" "$C_RESET"
+  printf '%s│  secure host-local control plane                          │%s\n' "$C_CYAN" "$C_RESET"
+  printf '%s╰────────────────────────────────────────────────────────────╯%s\n\n' "$C_CYAN" "$C_RESET"
+}
+
+phase() {
+  ((STEP += 1))
+  printf '%s[%02d] %s%s\n' "$C_CYAN" "$STEP" "$1" "$C_RESET"
+}
+
+info() {
+  printf '     %s•%s %s\n' "$C_DIM" "$C_RESET" "$1"
+}
+
+success() {
+  printf '     %s✔%s %s\n' "$C_GREEN" "$C_RESET" "$1"
+}
+
+warning() {
+  printf '     %s⚠%s %s\n' "$C_YELLOW" "$C_RESET" "$1"
+}
+
+probe_venv() {
+  local probe_dir probe_log
+  probe_dir="$(mktemp -d)"
+  probe_log="$(mktemp)"
+  if python3 -m venv "$probe_dir" >"$probe_log" 2>&1; then
+    rm -rf "$probe_dir" "$probe_log"
+    return 0
+  fi
+  VENV_ERROR="$(tr '\n' ' ' < "$probe_log")"
+  rm -rf "$probe_dir" "$probe_log"
+  return 1
+}
+
 usage() {
   cat <<'EOF'
 Usage: sudo ./scripts/setup.sh [options]
@@ -28,8 +83,17 @@ EOF
 }
 
 fail() {
-  printf 'setup: error: %s\n' "$*" >&2
+  printf '%s✖ setup failed:%s %s\n' "$C_RED" "$C_RESET" "$*" >&2
   exit 1
+}
+
+APT_UPDATED=0
+apt_update_once() {
+  if (( APT_UPDATED == 0 )); then
+    info "updating APT metadata"
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq || fail "apt-get update failed while preparing runtime dependencies"
+    APT_UPDATED=1
+  fi
 }
 
 while [[ $# -gt 0 ]]; do
@@ -73,9 +137,21 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+banner
+INSTALL_STARTED_AT="$SECONDS"
+phase "Preflight host and runtime"
+info "profile=$PROFILE | bind=$BIND_HOST | port=$PORT"
 [[ "$(id -u)" -eq 0 ]] || fail "run as root, for example: sudo ./scripts/setup.sh"
 [[ "$(uname -s)" == "Linux" ]] || fail "native setup currently supports Linux only"
 command -v systemctl >/dev/null || fail "systemd/systemctl is required"
+
+if ! command -v python3 >/dev/null 2>&1; then
+  command -v apt-get >/dev/null 2>&1 || fail "python3 is missing and apt-get is not available"
+  warning "python3 is missing; installing the system runtime"
+  apt_update_once
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 || fail "could not install python3"
+  success "python3 installed"
+fi
 command -v python3 >/dev/null || fail "python3 is required"
 
 python3 - <<'PY' || exit 1
@@ -85,21 +161,36 @@ if sys.version_info < (3, 11):
     raise SystemExit(1)
 PY
 
-venv_probe_dir="$(mktemp -d)"
-venv_probe_log="$(mktemp)"
-if ! python3 -m venv "$venv_probe_dir" >"$venv_probe_log" 2>&1; then
+if ! probe_venv; then
   venv_package="$(python3 -c 'import sys; print(f"python{sys.version_info.major}.{sys.version_info.minor}-venv")')"
-  venv_error="$(tr '\n' ' ' < "$venv_probe_log")"
-  rm -rf "$venv_probe_dir" "$venv_probe_log"
-  fail "Python venv support is unavailable. Install it and rerun: sudo apt-get update && sudo apt-get install -y $venv_package (details: $venv_error)"
+  if command -v apt-get >/dev/null 2>&1; then
+    warning "Python venv support is missing; installing $venv_package"
+    apt_update_once
+    if ! apt-cache show "$venv_package" >/dev/null 2>&1; then
+      warning "$venv_package is not available; falling back to python3-venv"
+      venv_package="python3-venv"
+    fi
+    info "installing $venv_package"
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$venv_package" || fail "could not install $venv_package (details: $VENV_ERROR)"
+    probe_venv || fail "Python venv support is still unavailable after installing $venv_package (details: $VENV_ERROR)"
+    success "Python venv support installed"
+  else
+    fail "Python venv support is unavailable and apt-get is not present (install the matching pythonX.Y-venv package; details: $VENV_ERROR)"
+  fi
+else
+  success "Python venv support ready"
 fi
-rm -rf "$venv_probe_dir" "$venv_probe_log"
 
 case "$PROFILE" in
   observer) SERVICE_USER="mcp-observer" ;;
   operator) SERVICE_USER="mcp-operator" ;;
   *) fail "profile must be observer or operator" ;;
 esac
+
+phase "Validate installation contract"
+info "service identity=$SERVICE_USER"
+info "installation root=$INSTALL_DIR"
+info "state root=$STATE_DIR"
 
 [[ "$HOST_ID" =~ ^[A-Za-z0-9._-]+$ ]] || fail "host id contains unsupported characters"
 [[ "$PORT" =~ ^[0-9]+$ ]] && (( PORT >= 1 && PORT <= 65535 )) || fail "port must be between 1 and 65535"
@@ -110,8 +201,9 @@ REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE="$REPO_ROOT/deploy/systemd/mcp-server-gateway.service"
 [[ -f "$REPO_ROOT/pyproject.toml" ]] || fail "run this script from a repository checkout"
 [[ -f "$TEMPLATE" ]] || fail "missing systemd service template: $TEMPLATE"
+success "repository and systemd template verified"
 
-USER_CREATED=0
+phase "Provision least-privilege service identity"
 if [[ -r "$MANAGED_USER_MARKER" ]] \
   && [[ "$(awk -F= '$1 == "MCP_SERVICE_USER" {print $2; exit}' "$MANAGED_USER_MARKER")" == "$SERVICE_USER" ]] \
   && [[ "$(awk -F= '$1 == "MCP_SERVICE_USER_CREATED" {print $2; exit}' "$MANAGED_USER_MARKER")" == "1" ]]; then
@@ -121,11 +213,12 @@ if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   useradd --system --user-group --create-home \
     --home-dir "$STATE_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
   USER_CREATED=1
-  printf 'setup: created Unix user %s\n' "$SERVICE_USER"
+  success "created Unix user $SERVICE_USER"
 else
-  printf 'setup: using existing Unix user %s\n' "$SERVICE_USER"
+  info "using existing Unix user $SERVICE_USER"
 fi
 
+phase "Build isolated gateway runtime"
 install -d -o root -g root -m 0755 "$INSTALL_DIR"
 install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 "$STATE_DIR"
 install -d -o root -g root -m 0750 "$CONFIG_DIR"
@@ -142,7 +235,9 @@ fi
 "$INSTALL_DIR/.venv/bin/pip" install --quiet --upgrade "$INSTALL_DIR"
 chown -R root:root "$INSTALL_DIR/.venv"
 chmod -R a=rX "$INSTALL_DIR/.venv"
+success "isolated Python runtime ready"
 
+phase "Install operator CLI"
 CLI_TARGET="$INSTALL_DIR/.venv/bin/mcp-gateway"
 CLI_PATH="/usr/local/bin/mcp-gateway"
 [[ -x "$CLI_TARGET" ]] || fail "mcp-gateway CLI was not installed: $CLI_TARGET"
@@ -151,7 +246,9 @@ if [[ -e "$CLI_PATH" || -L "$CLI_PATH" ]]; then
 else
   ln -s "$CLI_TARGET" "$CLI_PATH"
 fi
+success "CLI linked at $CLI_PATH"
 
+phase "Render protected configuration"
 CONFIG_FILE="$CONFIG_DIR/gateway.env"
 tmp_config=""
 tmp_unit=""
@@ -191,6 +288,9 @@ printf '%s\n' \
 install -o root -g root -m 0600 "$tmp_marker" "$MANAGED_USER_MARKER"
 rm -f "$tmp_marker"
 tmp_marker=""
+success "configuration and service identity marker secured"
+
+phase "Register and activate systemd service"
 
 escape_sed() {
   printf '%s' "$1" | sed 's/[&|]/\\&/g'
@@ -208,7 +308,9 @@ trap - EXIT
 
 systemctl daemon-reload
 systemctl enable --now mcp-server-gateway.service
+success "systemd enabled and service started"
 
+phase "Verify live health endpoint"
 case "$BIND_HOST" in
   0.0.0.0|"") health_host="127.0.0.1" ;;
   ::|"::0") health_host="[::1]" ;;
@@ -227,8 +329,12 @@ try:
 except Exception as exc:
     raise SystemExit(f"setup: service started but health check failed: {exc}")
 PY
+success "health check passed at $health_url"
 
-printf 'setup: installed and started mcp-server-gateway\n'
-printf 'setup: profile=%s user=%s endpoint=%s\n' "$PROFILE" "$SERVICE_USER" "$health_url"
-printf 'setup: CLI available as %s\n' "$CLI_PATH"
-printf 'setup: review %s before allowing remote access\n' "$CONFIG_FILE"
+elapsed_seconds=$((SECONDS - INSTALL_STARTED_AT))
+printf '\n%s╭────────────────────────────────────────────────────────────╮%s\n' "$C_GREEN" "$C_RESET"
+printf '%s│  INSTALLATION COMPLETE                                     │%s\n' "$C_GREEN" "$C_RESET"
+printf '%s╰────────────────────────────────────────────────────────────╯%s\n' "$C_GREEN" "$C_RESET"
+success "profile=$PROFILE | user=$SERVICE_USER | elapsed=${elapsed_seconds}s"
+success "CLI: $CLI_PATH"
+info "review $CONFIG_FILE before allowing remote access"
