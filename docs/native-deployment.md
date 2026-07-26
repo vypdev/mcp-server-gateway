@@ -20,7 +20,7 @@ MCP_PROFILE=observer
 MCP_PROFILE=operator
 ```
 
-Before installation, confirm the host provides Linux, systemd, Python 3.11+, and an unused private bind address/port:
+Before installation, confirm the host provides Linux, systemd, Python 3.11+, the matching Python venv package, and an unused private bind address/port:
 
 ```bash
 id

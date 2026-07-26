@@ -16,6 +16,8 @@ Native MCP Server Gateway
 
 The gateway is not a central aggregator. Each installation is a local authority for exactly one host and runs as a system service under a dedicated Unix identity.
 
+Before running the installer, the target host needs Linux/systemd, Python 3.11+, and the Python venv package (`python3.14-venv` for Python 3.14 on Debian/Ubuntu). The installer now checks this before creating users or files.
+
 ## Quick install
 
 For the shortest installation path, review `install.sh` and run it through Bash from the selected repository branch:

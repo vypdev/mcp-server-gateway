@@ -85,6 +85,16 @@ if sys.version_info < (3, 11):
     raise SystemExit(1)
 PY
 
+venv_probe_dir="$(mktemp -d)"
+venv_probe_log="$(mktemp)"
+if ! python3 -m venv "$venv_probe_dir" >"$venv_probe_log" 2>&1; then
+  venv_package="$(python3 -c 'import sys; print(f"python{sys.version_info.major}.{sys.version_info.minor}-venv")')"
+  venv_error="$(tr '\n' ' ' < "$venv_probe_log")"
+  rm -rf "$venv_probe_dir" "$venv_probe_log"
+  fail "Python venv support is unavailable. Install it and rerun: sudo apt-get update && sudo apt-get install -y $venv_package (details: $venv_error)"
+fi
+rm -rf "$venv_probe_dir" "$venv_probe_log"
+
 case "$PROFILE" in
   observer) SERVICE_USER="mcp-observer" ;;
   operator) SERVICE_USER="mcp-operator" ;;
