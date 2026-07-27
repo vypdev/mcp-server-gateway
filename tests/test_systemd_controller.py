@@ -1,7 +1,7 @@
 import subprocess
 
-from mcp_gateway.domain.service import ServiceState
-from mcp_gateway.infrastructure.systemd_controller import SystemdServiceController
+from gateway_node.domain.service import ServiceState
+from gateway_node.infrastructure.systemd_controller import SystemdServiceController
 
 
 def completed(args, returncode=0, stdout="", stderr=""):

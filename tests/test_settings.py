@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from mcp_gateway.domain.profiles import Profile
-from mcp_gateway.infrastructure.settings import Settings
+from gateway_node.domain.profiles import Profile
+from gateway_node.infrastructure.settings import Settings
 
 
 def test_settings_parse_profile_and_paths(monkeypatch):

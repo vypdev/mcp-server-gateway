@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from mcp_gateway.application.authentication import AuthenticationService
-from mcp_gateway.infrastructure.token_store import JsonTokenStore
+from gateway_node.application.authentication import AuthenticationService
+from gateway_node.infrastructure.token_store import JsonTokenStore
 
 
 def test_authenticate_stores_only_hash_and_verifies_token(tmp_path):

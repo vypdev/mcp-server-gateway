@@ -1,5 +1,5 @@
 [Unit]
-Description=MCP Server Gateway for the local host
+Description=Gateway Node for the local host
 After=network-online.target
 Wants=network-online.target
 
@@ -9,7 +9,7 @@ User=@MCP_USER@
 Group=@MCP_USER@
 WorkingDirectory=@INSTALL_DIR@
 EnvironmentFile=@CONFIG_FILE@
-ExecStart=@INSTALL_DIR@/.venv/bin/mcp-server-gateway
+ExecStart=@INSTALL_DIR@/.venv/bin/gateway-node-server
 Restart=on-failure
 RestartSec=5s
 

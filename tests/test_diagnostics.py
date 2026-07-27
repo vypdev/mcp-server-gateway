@@ -1,5 +1,5 @@
-from mcp_gateway.domain.service import ServiceState, ServiceStatus
-from mcp_gateway.infrastructure.diagnostics import InstallationLayout, SystemDiagnostics
+from gateway_node.domain.service import ServiceState, ServiceStatus
+from gateway_node.infrastructure.diagnostics import InstallationLayout, SystemDiagnostics
 
 
 class FakeController:
@@ -19,7 +19,7 @@ class FakeResponse:
 
 def test_doctor_passes_for_complete_installation(tmp_path, monkeypatch):
     install = tmp_path / "install"
-    executable = install / ".venv" / "bin" / "mcp-server-gateway"
+    executable = install / ".venv" / "bin" / "gateway-node-server"
     executable.parent.mkdir(parents=True)
     executable.write_text("#!/bin/sh\n")
     executable.chmod(0o755)
@@ -42,8 +42,8 @@ def test_doctor_passes_for_complete_installation(tmp_path, monkeypatch):
     unit.write_text("[Service]\n")
     layout = InstallationLayout(install, config, unit, state)
 
-    monkeypatch.setattr("mcp_gateway.infrastructure.diagnostics.pwd.getpwnam", lambda user: object())
-    monkeypatch.setattr("mcp_gateway.infrastructure.diagnostics.urllib.request.urlopen", lambda *args, **kwargs: FakeResponse())
+    monkeypatch.setattr("gateway_node.infrastructure.diagnostics.pwd.getpwnam", lambda user: object())
+    monkeypatch.setattr("gateway_node.infrastructure.diagnostics.urllib.request.urlopen", lambda *args, **kwargs: FakeResponse())
 
     report = SystemDiagnostics(FakeController(), layout).run()
 

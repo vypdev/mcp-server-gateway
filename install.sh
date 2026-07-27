@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-REPOSITORY_URL="${MCP_GATEWAY_REPOSITORY_URL:-https://github.com/vypdev/mcp-server-gateway.git}"
-REF="${MCP_GATEWAY_REF:-master}"
+REPOSITORY_URL="${GATEWAY_NODE_REPOSITORY_URL:-https://github.com/vypdev/gateway-node.git}"
+REF="${GATEWAY_NODE_REF:-master}"
 
 fail() {
-  printf 'mcp-gateway installer: error: %s\n' "$*" >&2
+  printf 'gateway-node installer: error: %s\n' "$*" >&2
   exit 1
 }
 
@@ -18,22 +18,22 @@ scripts/setup.sh. Setup options such as --profile, --bind, and --port are
 forwarded unchanged.
 
 Environment:
-  MCP_GATEWAY_REF                 Git branch or tag (default: master)
-  MCP_GATEWAY_REPOSITORY_URL      Git repository URL
+  GATEWAY_NODE_REF                 Git branch or tag (default: master)
+  GATEWAY_NODE_REPOSITORY_URL      Git repository URL
 EOF
   exit 0
 fi
 
 command -v git >/dev/null 2>&1 || fail "git is required"
-[[ "$REF" =~ ^[A-Za-z0-9._/-]+$ ]] || fail "MCP_GATEWAY_REF contains unsupported characters"
+[[ "$REF" =~ ^[A-Za-z0-9._/-]+$ ]] || fail "GATEWAY_NODE_REF contains unsupported characters"
 
-checkout="$(mktemp -d "${TMPDIR:-/tmp}/mcp-gateway.XXXXXX")"
+checkout="$(mktemp -d "${TMPDIR:-/tmp}/gateway-node.XXXXXX")"
 cleanup() {
   rm -rf "$checkout"
 }
 trap cleanup EXIT
 
-printf 'mcp-gateway installer: cloning %s (%s)\n' "$REPOSITORY_URL" "$REF"
+printf 'gateway-node installer: cloning %s (%s)\n' "$REPOSITORY_URL" "$REF"
 git clone --quiet --depth 1 --branch "$REF" "$REPOSITORY_URL" "$checkout/repository"
 
 setup=("$checkout/repository/scripts/setup.sh")
@@ -46,4 +46,4 @@ else
   sudo "${setup[@]}" "$@"
 fi
 
-printf 'mcp-gateway installer: complete\n'
+printf 'gateway-node installer: complete\n'

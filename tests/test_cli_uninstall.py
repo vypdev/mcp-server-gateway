@@ -1,6 +1,6 @@
-from mcp_gateway.application.management import ActionResult
-from mcp_gateway.domain.service import CheckResult, DoctorReport, ServiceState, ServiceStatus
-from mcp_gateway.presentation.cli import main
+from gateway_node.application.management import ActionResult
+from gateway_node.domain.service import CheckResult, DoctorReport, ServiceState, ServiceStatus
+from gateway_node.presentation.cli import main
 
 
 class UninstallManagement:

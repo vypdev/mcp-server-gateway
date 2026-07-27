@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from mcp_gateway.domain.commands import CommandRequest
-from mcp_gateway.infrastructure.subprocess_runner import ExecutionDenied, ProcessPolicy, SubprocessCommandRunner
+from gateway_node.domain.commands import CommandRequest
+from gateway_node.infrastructure.subprocess_runner import ExecutionDenied, ProcessPolicy, SubprocessCommandRunner
 
 
 def runner_for(tmp_path: Path, **kwargs) -> SubprocessCommandRunner:

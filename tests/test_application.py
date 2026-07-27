@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from mcp_gateway.application.services import ExecuteCommand
-from mcp_gateway.domain.commands import CommandRequest, CommandResult
-from mcp_gateway.domain.profiles import Profile
+from gateway_node.application.services import ExecuteCommand
+from gateway_node.domain.commands import CommandRequest, CommandResult
+from gateway_node.domain.profiles import Profile
 
 
 @dataclass

@@ -6,14 +6,14 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from mcp_gateway.application.authentication import AuthenticationService
-from mcp_gateway.application.management import GatewayManagement
-from mcp_gateway.application.ports import DiagnosticsProvider
-from mcp_gateway.domain.service import ActionResult, DoctorReport, ServiceStatus
-from mcp_gateway.infrastructure.diagnostics import SystemDiagnostics
-from mcp_gateway.infrastructure.installation_remover import SystemInstallationRemover
-from mcp_gateway.infrastructure.systemd_controller import ServiceCommandError, SystemdServiceController
-from mcp_gateway.infrastructure.token_store import JsonTokenStore
+from gateway_node.application.authentication import AuthenticationService
+from gateway_node.application.management import GatewayManagement
+from gateway_node.application.ports import DiagnosticsProvider
+from gateway_node.domain.service import ActionResult, DoctorReport, ServiceStatus
+from gateway_node.infrastructure.diagnostics import SystemDiagnostics
+from gateway_node.infrastructure.installation_remover import SystemInstallationRemover
+from gateway_node.infrastructure.systemd_controller import ServiceCommandError, SystemdServiceController
+from gateway_node.infrastructure.token_store import JsonTokenStore
 
 _COMMANDS = ("doctor", "status", "start", "restart", "stop", "uninstall", "authenticate", "revoke")
 _AUTH_COMMANDS = {"authenticate", "revoke"}
@@ -26,7 +26,7 @@ def main(
     diagnostics: DiagnosticsProvider | None = None,
     auth_service: AuthenticationService | None = None,
 ) -> int:
-    parser = argparse.ArgumentParser(prog="mcp-gateway", description="Manage the MCP Server Gateway service")
+    parser = argparse.ArgumentParser(prog="gateway-node", description="Manage the Gateway Node service")
     parser.add_argument("command", choices=_COMMANDS)
     parser.add_argument("client_id", nargs="?", help="client label for authenticate/revoke")
     parser.add_argument("--yes", action="store_true", help="confirm destructive uninstall")
@@ -41,11 +41,11 @@ def main(
     if args.command in _AUTH_COMMANDS:
         if auth_service is None:
             if os.geteuid() != 0:
-                print("error: authentication changes require root; use sudo mcp-gateway", file=sys.stderr)
+                print("error: authentication changes require root; use sudo gateway-node", file=sys.stderr)
                 return 1
             auth_service = AuthenticationService(JsonTokenStore(
-                Path("/etc/mcp-server-gateway/tokens.json"),
-                Path("/var/lib/mcp-server-gateway/.tokens.json.lock"),
+                Path("/etc/gateway-node/tokens.json"),
+                Path("/var/lib/gateway-node/.tokens.json.lock"),
             ))
         try:
             if args.command == "authenticate":
@@ -64,7 +64,7 @@ def main(
 
     if management is None:
         if args.command == "uninstall" and os.geteuid() != 0:
-            print("error: uninstall requires root; use sudo mcp-gateway uninstall", file=sys.stderr)
+            print("error: uninstall requires root; use sudo gateway-node uninstall", file=sys.stderr)
             return 1
         controller = SystemdServiceController()
         diagnostics = diagnostics or SystemDiagnostics(controller)
@@ -95,7 +95,7 @@ def main(
 
 
 def _print_status(status: ServiceStatus) -> int:
-    print("service: mcp-server-gateway.service")
+    print("service: gateway-node.service")
     print(f"state: {status.state.value}")
     print(f"summary: {status.summary}")
     print(f"enabled: {_yes_no(status.enabled)}")

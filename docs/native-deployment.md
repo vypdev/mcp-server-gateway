@@ -6,7 +6,7 @@ The production gateway runs directly on the host it manages as a systemd service
 
 ```text
 MCP clients
-  └── Native MCP Server Gateway on a managed host
+  └── Native Gateway Node on a managed host
         ├── Unix identity: mcp-observer or mcp-operator
         ├── operating-system adapters
         ├── service integrations
@@ -34,15 +34,15 @@ ss -ltnp
 The shortest supported installation path is:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vypdev/mcp-server-gateway/master/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vypdev/gateway-node/master/install.sh)"
 ```
 
 The bootstrap clones the selected repository revision into a temporary directory, runs `scripts/setup.sh`, and removes the temporary checkout. The inspected clone-and-run path remains supported:
 
 ```bash
 git clone --branch master --depth 1 \
-  https://github.com/vypdev/mcp-server-gateway.git
-cd mcp-server-gateway
+  https://github.com/vypdev/gateway-node.git
+cd gateway-node
 sudo ./scripts/setup.sh --profile observer
 ```
 
@@ -56,7 +56,7 @@ The script is idempotent. It will:
 
 - validate Linux, Python, and systemd prerequisites;
 - create the matching Unix identity when missing;
-- install the application into `/opt/mcp-server-gateway`;
+- install the application into `/opt/gateway-node`;
 - create a virtual environment;
 - install the package;
 - create a root-owned environment file if missing;
@@ -71,42 +71,42 @@ The script does not grant additional host privileges, alter network policy, or o
 The setup script creates:
 
 ```text
-/etc/mcp-server-gateway/gateway.env
-/etc/systemd/system/mcp-server-gateway.service
-/opt/mcp-server-gateway/.venv/
-/var/lib/mcp-server-gateway/
+/etc/gateway-node/gateway.env
+/etc/systemd/system/gateway-node.service
+/opt/gateway-node/.venv/
+/var/lib/gateway-node/
 ```
 
-Review `/etc/mcp-server-gateway/gateway.env` before exposing the endpoint:
+Review `/etc/gateway-node/gateway.env` before exposing the endpoint:
 
 ```ini
 MCP_HOST_ID=<stable-host-identifier>
 MCP_PROFILE=observer
 MCP_HOST=127.0.0.1
 MCP_PORT=8000
-MCP_ALLOWED_CWDS=/var/lib/mcp-server-gateway
+MCP_ALLOWED_CWDS=/var/lib/gateway-node
 MCP_COMMAND_TIMEOUT_SECONDS=30
 MCP_MAX_OUTPUT_BYTES=262144
 MCP_MAX_COMMAND_ARGS=64
-MCP_AUTH_FILE=/etc/mcp-server-gateway/tokens.json
+MCP_AUTH_FILE=/etc/gateway-node/tokens.json
 ```
 
 For remote clients, bind to a private interface and restrict the firewall to approved client addresses. Do not bind publicly without private transport and authentication.
 
 ## Service management
 
-The setup also installs `/usr/local/bin/mcp-gateway`. Use it for lifecycle and diagnostics:
+The setup also installs `/usr/local/bin/gateway-node`. Use it for lifecycle and diagnostics:
 
 ```bash
-mcp-gateway doctor
-mcp-gateway status
-sudo mcp-gateway start
-sudo mcp-gateway restart
-sudo mcp-gateway stop
-sudo mcp-gateway authenticate openclaw
-sudo mcp-gateway authenticate hermes
-sudo mcp-gateway revoke openclaw
-sudo mcp-gateway uninstall --yes
+gateway-node doctor
+gateway-node status
+sudo gateway-node start
+sudo gateway-node restart
+sudo gateway-node stop
+sudo gateway-node authenticate openclaw
+sudo gateway-node authenticate hermes
+sudo gateway-node revoke openclaw
+sudo gateway-node uninstall --yes
 ```
 
 `systemctl enable --now` makes the service start automatically at boot. `Restart=on-failure` recovers from unexpected process failures and ordinary host reboots. `uninstall` is destructive: it requires root and explicit confirmation, and removes only the Unix service account that this installer created and marked.
@@ -114,16 +114,16 @@ sudo mcp-gateway uninstall --yes
 ## Verify the native identity
 
 ```bash
-systemctl status mcp-server-gateway.service --no-pager
+systemctl status gateway-node.service --no-pager
 curl --fail http://127.0.0.1:8000/healthz
 curl --fail http://127.0.0.1:8000/readyz
-journalctl -u mcp-server-gateway.service -n 100 --no-pager
+journalctl -u gateway-node.service -n 100 --no-pager
 ```
 
 The `host_get_identity` result must identify the actual host and expected Unix UID. In operator mode, start with a harmless command:
 
 ```json
-{"argv":["id"],"cwd":"/var/lib/mcp-server-gateway","timeout_seconds":5}
+{"argv":["id"],"cwd":"/var/lib/gateway-node","timeout_seconds":5}
 ```
 
 Then test read-only diagnostics and bounded command execution. Do not grant extra host privileges until the resulting capability boundary is explicitly accepted.
@@ -135,8 +135,8 @@ Expose the MCP endpoint only over a private authenticated transport. The gateway
 ## Rollback
 
 ```bash
-sudo systemctl disable --now mcp-server-gateway.service
-sudo rm -f /etc/systemd/system/mcp-server-gateway.service
+sudo systemctl disable --now gateway-node.service
+sudo rm -f /etc/systemd/system/gateway-node.service
 sudo systemctl daemon-reload
 ```
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from mcp_gateway.application.authentication import IssuedToken
-from mcp_gateway.presentation.cli import main
+from gateway_node.application.authentication import IssuedToken
+from gateway_node.presentation.cli import main
 
 
 @dataclass

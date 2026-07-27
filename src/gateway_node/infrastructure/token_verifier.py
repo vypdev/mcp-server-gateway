@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from mcp.server.auth.provider import AccessToken
 
-from mcp_gateway.application.authentication import AuthenticationService
+from gateway_node.application.authentication import AuthenticationService
 
 
 class LocalTokenVerifier:

@@ -3,9 +3,9 @@ set -Eeuo pipefail
 
 PROFILE="observer"
 RECONFIGURE=0
-INSTALL_DIR="/opt/mcp-server-gateway"
-CONFIG_DIR="/etc/mcp-server-gateway"
-STATE_DIR="/var/lib/mcp-server-gateway"
+INSTALL_DIR="/opt/gateway-node"
+CONFIG_DIR="/etc/gateway-node"
+STATE_DIR="/var/lib/gateway-node"
 AUTH_FILE="$CONFIG_DIR/tokens.json"
 AUTH_LOCK_FILE="$STATE_DIR/.tokens.json.lock"
 MANAGED_USER_MARKER="$CONFIG_DIR/managed-user"
@@ -34,7 +34,7 @@ INSTALL_STARTED_AT=0
 
 banner() {
   printf '\n%s╭────────────────────────────────────────────────────────────╮%s\n' "$C_CYAN" "$C_RESET"
-  printf '%s│  MCP SERVER GATEWAY // NATIVE INSTALLER                  │%s\n' "$C_CYAN" "$C_RESET"
+  printf '%s│  GATEWAY NODE // NATIVE INSTALLER                         │%s\n' "$C_CYAN" "$C_RESET"
   printf '%s│  secure host-local control plane                          │%s\n' "$C_CYAN" "$C_RESET"
   printf '%s╰────────────────────────────────────────────────────────────╯%s\n\n' "$C_CYAN" "$C_RESET"
 }
@@ -200,7 +200,7 @@ info "state root=$STATE_DIR"
 [[ "$ALLOWED_CWDS" != *$'\n'* && "$ALLOWED_CWDS" != *$'\r'* ]] || fail "allowed paths contain a newline"
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-TEMPLATE="$REPO_ROOT/deploy/systemd/mcp-server-gateway.service"
+TEMPLATE="$REPO_ROOT/deploy/systemd/gateway-node.service"
 [[ -f "$REPO_ROOT/pyproject.toml" ]] || fail "run this script from a repository checkout"
 [[ -f "$TEMPLATE" ]] || fail "missing systemd service template: $TEMPLATE"
 success "repository and systemd template verified"
@@ -240,9 +240,9 @@ chmod -R a=rX "$INSTALL_DIR/.venv"
 success "isolated Python runtime ready"
 
 phase "Install operator CLI"
-CLI_TARGET="$INSTALL_DIR/.venv/bin/mcp-gateway"
-CLI_PATH="/usr/local/bin/mcp-gateway"
-[[ -x "$CLI_TARGET" ]] || fail "mcp-gateway CLI was not installed: $CLI_TARGET"
+CLI_TARGET="$INSTALL_DIR/.venv/bin/gateway-node"
+CLI_PATH="/usr/local/bin/gateway-node"
+[[ -x "$CLI_TARGET" ]] || fail "gateway-node CLI was not installed: $CLI_TARGET"
 if [[ -e "$CLI_PATH" || -L "$CLI_PATH" ]]; then
   [[ -L "$CLI_PATH" && "$(readlink "$CLI_PATH")" == "$CLI_TARGET" ]] || fail "$CLI_PATH already exists and is not managed by this installation"
 else
@@ -335,13 +335,13 @@ sed \
   -e "s|@CONFIG_FILE@|$(escape_sed "$CONFIG_FILE")|g" \
   -e "s|@STATE_DIR@|$(escape_sed "$STATE_DIR")|g" \
   "$TEMPLATE" > "$tmp_unit"
-install -o root -g root -m 0644 "$tmp_unit" /etc/systemd/system/mcp-server-gateway.service
+install -o root -g root -m 0644 "$tmp_unit" /etc/systemd/system/gateway-node.service
 rm -f "$tmp_unit"
 trap - EXIT
 
 systemctl daemon-reload
-systemctl enable mcp-server-gateway.service
-systemctl restart mcp-server-gateway.service
+systemctl enable gateway-node.service
+systemctl restart gateway-node.service
 success "systemd enabled and service restarted"
 
 phase "Verify live health endpoint"

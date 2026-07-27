@@ -1,4 +1,4 @@
-# MCP Server Gateway
+# Gateway Node
 
 A native, per-host MCP server that gives MCP clients controlled access to the operating system on which it runs.
 
@@ -6,7 +6,7 @@ A native, per-host MCP server that gives MCP clients controlled access to the op
 MCP clients
     │ private authenticated transport
     ▼
-Native MCP Server Gateway
+Native Gateway Node for controlled host operations
     │
     ├── host identity and status
     ├── bounded process execution
@@ -23,13 +23,13 @@ Before running the installer, the target host needs Linux/systemd and an unused 
 For the shortest installation path, review `install.sh` and run it through Bash from the selected repository branch:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vypdev/mcp-server-gateway/master/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/vypdev/gateway-node/master/install.sh)"
 ```
 
 The bootstrap clones the repository into a temporary directory, invokes `scripts/setup.sh`, and removes the temporary checkout. Pass setup options after `--` when invoking Bash explicitly:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/vypdev/mcp-server-gateway/master/install.sh \
+curl -fsSL https://raw.githubusercontent.com/vypdev/gateway-node/master/install.sh \
   | /bin/bash -s -- --profile operator
 ```
 
@@ -41,8 +41,8 @@ On a Linux host with systemd:
 
 ```bash
 git clone --branch master --depth 1 \
-  https://github.com/vypdev/mcp-server-gateway.git
-cd mcp-server-gateway
+  https://github.com/vypdev/gateway-node.git
+cd gateway-node
 sudo ./scripts/setup.sh --profile observer
 ```
 
@@ -64,21 +64,21 @@ The setup script creates the matching `mcp-observer` or `mcp-operator` account w
 - Working directories, timeouts, argument count, environment, and output are bounded.
 - The service binds to loopback by default.
 - The MCP endpoint requires a per-client Bearer token.
-- Token records are stored as SHA-256 hashes in `/etc/mcp-server-gateway/tokens.json`; plaintext tokens are shown only at creation.
+- Token records are stored as SHA-256 hashes in `/etc/gateway-node/tokens.json`; plaintext tokens are shown only at creation.
 
 ## Client authentication
 
 The setup creates a bootstrap credential and prints it once. Copy it to the intended MCP client's secret environment, not to Git or ordinary logs. Generate independent credentials for each client:
 
 ```bash
-sudo mcp-gateway authenticate openclaw
-sudo mcp-gateway authenticate hermes
+sudo gateway-node authenticate openclaw
+sudo gateway-node authenticate hermes
 ```
 
 Each command prints one new token and never revokes existing tokens. Revoke all tokens belonging to a client label with:
 
 ```bash
-sudo mcp-gateway revoke openclaw
+sudo gateway-node revoke openclaw
 ```
 
 Use a stable client label such as `openclaw`, `hermes`, or an authorized host/domain identifier. The `/healthz` and `/readyz` endpoints remain unauthenticated for local service supervision; `/mcp` requires `Authorization: Bearer <token>`.
@@ -86,7 +86,7 @@ Use a stable client label such as `openclaw`, `hermes`, or an authorized host/do
 ## Architecture
 
 ```text
-src/mcp_gateway/
+src/gateway_node/
 ├── domain/
 │   ├── commands.py       # immutable command value objects
 │   └── profiles.py       # profile rules
@@ -131,12 +131,12 @@ The operator profile does not mean root. The effective capability is the interse
 The installer enables the service for automatic startup at boot and configures restart after unexpected failures. After installation, use the global CLI:
 
 ```bash
-mcp-gateway doctor
-mcp-gateway status
-sudo mcp-gateway start
-sudo mcp-gateway restart
-sudo mcp-gateway stop
-sudo mcp-gateway uninstall --yes
+gateway-node doctor
+gateway-node status
+sudo gateway-node start
+sudo gateway-node restart
+sudo gateway-node stop
+sudo gateway-node uninstall --yes
 ```
 
 `start` and `stop` are idempotent: they report when the requested state is already active. `doctor` checks the unit, configuration, Unix identity, installed executable, service state, and health endpoint without printing secret values. `uninstall` stops and disables the unit, then removes the managed service unit, installation directory, configuration, state, and CLI symlink. It is interactive by default and requires typing `UNINSTALL`; `--yes` is required in non-interactive automation. A Unix service account is removed only when the installer created and marked that account; pre-existing accounts are preserved.
@@ -152,7 +152,7 @@ Implemented and tested:
 - bounded operator command execution;
 - native systemd installation;
 - one-line bootstrap installer;
-- `mcp-gateway` lifecycle and diagnostics CLI;
+- `gateway-node` lifecycle and diagnostics CLI;
 - automated tests and CI.
 
 ## Documentation

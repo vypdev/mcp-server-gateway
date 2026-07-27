@@ -1,13 +1,13 @@
 from starlette.testclient import TestClient
 
-from mcp_gateway.application.authentication import AuthenticationService
-from mcp_gateway.application.services import ExecuteCommand
-from mcp_gateway.domain.profiles import Profile
-from mcp_gateway.infrastructure.settings import Settings
-from mcp_gateway.infrastructure.subprocess_runner import ProcessPolicy, SubprocessCommandRunner
-from mcp_gateway.infrastructure.token_store import JsonTokenStore
-from mcp_gateway.infrastructure.token_verifier import LocalTokenVerifier
-from mcp_gateway.presentation.mcp_server import create_server
+from gateway_node.application.authentication import AuthenticationService
+from gateway_node.application.services import ExecuteCommand
+from gateway_node.domain.profiles import Profile
+from gateway_node.infrastructure.settings import Settings
+from gateway_node.infrastructure.subprocess_runner import ProcessPolicy, SubprocessCommandRunner
+from gateway_node.infrastructure.token_store import JsonTokenStore
+from gateway_node.infrastructure.token_verifier import LocalTokenVerifier
+from gateway_node.presentation.mcp_server import create_server
 
 
 class FakeHostInfo:

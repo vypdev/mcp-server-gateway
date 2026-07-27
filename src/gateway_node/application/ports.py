@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from mcp_gateway.domain.commands import CommandRequest, CommandResult
-from mcp_gateway.domain.service import DoctorReport, ServiceStatus
+from gateway_node.domain.commands import CommandRequest, CommandResult
+from gateway_node.domain.service import DoctorReport, ServiceStatus
 
 
 class CommandRunner(Protocol):

@@ -1,7 +1,7 @@
 import pytest
 
-from mcp_gateway.domain.commands import CommandRequest
-from mcp_gateway.domain.profiles import Profile
+from gateway_node.domain.commands import CommandRequest
+from gateway_node.domain.profiles import Profile
 
 
 def test_profiles_define_monotonic_command_capability():

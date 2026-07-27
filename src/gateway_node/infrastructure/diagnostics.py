@@ -8,18 +8,18 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from mcp_gateway.domain.service import CheckResult, DoctorReport
-from mcp_gateway.infrastructure.systemd_controller import ServiceCommandError, SystemdServiceController
+from gateway_node.domain.service import CheckResult, DoctorReport
+from gateway_node.infrastructure.systemd_controller import ServiceCommandError, SystemdServiceController
 
 
 @dataclass(frozen=True)
 class InstallationLayout:
-    install_dir: Path = Path("/opt/mcp-server-gateway")
-    config_file: Path = Path("/etc/mcp-server-gateway/gateway.env")
-    service_file: Path = Path("/etc/systemd/system/mcp-server-gateway.service")
-    state_dir: Path = Path("/var/lib/mcp-server-gateway")
-    auth_file: Path = Path("/etc/mcp-server-gateway/tokens.json")
-    auth_lock_file: Path = Path("/var/lib/mcp-server-gateway/.tokens.json.lock")
+    install_dir: Path = Path("/opt/gateway-node")
+    config_file: Path = Path("/etc/gateway-node/gateway.env")
+    service_file: Path = Path("/etc/systemd/system/gateway-node.service")
+    state_dir: Path = Path("/var/lib/gateway-node")
+    auth_file: Path = Path("/etc/gateway-node/tokens.json")
+    auth_lock_file: Path = Path("/var/lib/gateway-node/.tokens.json.lock")
 
 
 @dataclass(frozen=True)
@@ -113,7 +113,7 @@ class SystemDiagnostics:
         return CheckResult("service user", True, user)
 
     def _executable_check(self) -> CheckResult:
-        executable = self.layout.install_dir / ".venv" / "bin" / "mcp-server-gateway"
+        executable = self.layout.install_dir / ".venv" / "bin" / "gateway-node-server"
         valid = executable.is_file() and os.access(executable, os.X_OK)
         return CheckResult("gateway executable", valid, str(executable) if valid else f"missing or not executable: {executable}")
 

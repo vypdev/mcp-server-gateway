@@ -1,5 +1,5 @@
-from mcp_gateway.application.management import GatewayManagement
-from mcp_gateway.domain.service import ServiceState, ServiceStatus
+from gateway_node.application.management import GatewayManagement
+from gateway_node.domain.service import ServiceState, ServiceStatus
 
 
 class FakeController:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from mcp_gateway.application.ports import CommandRunner
-from mcp_gateway.domain.commands import CommandRequest, CommandResult
-from mcp_gateway.domain.profiles import Profile
+from gateway_node.application.ports import CommandRunner
+from gateway_node.domain.commands import CommandRequest, CommandResult
+from gateway_node.domain.profiles import Profile
 
 
 class ExecuteCommand:

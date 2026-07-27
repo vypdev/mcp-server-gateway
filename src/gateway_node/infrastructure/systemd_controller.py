@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 
-from mcp_gateway.domain.service import ServiceState, ServiceStatus
+from gateway_node.domain.service import ServiceState, ServiceStatus
 
 
 class ServiceCommandError(RuntimeError):
@@ -12,7 +12,7 @@ class ServiceCommandError(RuntimeError):
 
 @dataclass(frozen=True)
 class SystemdServiceController:
-    service_name: str = "mcp-server-gateway.service"
+    service_name: str = "gateway-node.service"
     command: str = "systemctl"
 
     def status(self) -> ServiceStatus:

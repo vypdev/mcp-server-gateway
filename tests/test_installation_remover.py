@@ -1,8 +1,8 @@
 from pathlib import Path
 from subprocess import CompletedProcess
 
-from mcp_gateway.infrastructure.diagnostics import InstallationLayout
-from mcp_gateway.infrastructure.installation_remover import SystemInstallationRemover
+from gateway_node.infrastructure.diagnostics import InstallationLayout
+from gateway_node.infrastructure.installation_remover import SystemInstallationRemover
 
 
 class FakeController:
@@ -24,8 +24,8 @@ def test_remover_deletes_managed_artifacts_and_created_user(tmp_path, monkeypatc
     config = config_dir / "gateway.env"
     auth = config_dir / "tokens.json"
     auth_lock = config_dir / ".tokens.json.lock"
-    service = tmp_path / "mcp-server-gateway.service"
-    cli = tmp_path / "mcp-gateway"
+    service = tmp_path / "gateway-node.service"
+    cli = tmp_path / "gateway-node"
     install.mkdir()
     state.mkdir()
     config_dir.mkdir()
@@ -37,7 +37,7 @@ def test_remover_deletes_managed_artifacts_and_created_user(tmp_path, monkeypatc
     )
     (config_dir / "gateway.env.bak.20260101000000").write_text("old\n")
     service.write_text("[Unit]\n")
-    cli.symlink_to("/opt/mcp-server-gateway/.venv/bin/mcp-gateway")
+    cli.symlink_to("/opt/gateway-node/.venv/bin/gateway-node")
     layout = InstallationLayout(
         install_dir=install,
         config_file=config,
@@ -48,14 +48,14 @@ def test_remover_deletes_managed_artifacts_and_created_user(tmp_path, monkeypatc
     )
     controller = FakeController()
     remover = SystemInstallationRemover(controller, layout, cli)
-    monkeypatch.setattr("mcp_gateway.infrastructure.installation_remover.os.geteuid", lambda: 0)
+    monkeypatch.setattr("gateway_node.infrastructure.installation_remover.os.geteuid", lambda: 0)
     userdel_calls = []
 
     def fake_run(args, **kwargs):
         userdel_calls.append(args)
         return CompletedProcess(args, 0, "", "")
 
-    monkeypatch.setattr("mcp_gateway.infrastructure.installation_remover.subprocess.run", fake_run)
+    monkeypatch.setattr("gateway_node.infrastructure.installation_remover.subprocess.run", fake_run)
 
     remover.remove()
 

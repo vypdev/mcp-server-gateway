@@ -10,11 +10,11 @@ from mcp.server.fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from mcp_gateway.application.services import ExecuteCommand
-from mcp_gateway.domain.commands import CommandRequest
-from mcp_gateway.infrastructure.settings import Settings
-from mcp_gateway.infrastructure.subprocess_runner import ExecutionDenied
-from mcp_gateway.application.ports import HostInfoProvider
+from gateway_node.application.services import ExecuteCommand
+from gateway_node.domain.commands import CommandRequest
+from gateway_node.infrastructure.settings import Settings
+from gateway_node.infrastructure.subprocess_runner import ExecutionDenied
+from gateway_node.application.ports import HostInfoProvider
 
 
 def create_server(
@@ -31,7 +31,7 @@ def create_server(
             required_scopes=["gateway"],
         )
     server = FastMCP(
-        name="mcp-server-gateway",
+        name="gateway-node",
         instructions=(
             f"Native host gateway for {settings.host_id}. "
             f"Profile: {settings.profile.value}. "
@@ -48,7 +48,7 @@ def create_server(
 
     @server.custom_route("/healthz", methods=["GET"])
     async def healthz(_: Request) -> JSONResponse:
-        return JSONResponse({"status": "ok", "service": "mcp-server-gateway", "host_id": settings.host_id})
+        return JSONResponse({"status": "ok", "service": "gateway-node", "host_id": settings.host_id})
 
     @server.custom_route("/readyz", methods=["GET"])
     async def readyz(_: Request) -> JSONResponse:

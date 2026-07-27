@@ -6,15 +6,15 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from mcp_gateway.infrastructure.diagnostics import InstallationLayout
-from mcp_gateway.infrastructure.systemd_controller import SystemdServiceController
+from gateway_node.infrastructure.diagnostics import InstallationLayout
+from gateway_node.infrastructure.systemd_controller import SystemdServiceController
 
 
 @dataclass(frozen=True)
 class SystemInstallationRemover:
     controller: SystemdServiceController
     layout: InstallationLayout = InstallationLayout()
-    cli_path: Path = Path("/usr/local/bin/mcp-gateway")
+    cli_path: Path = Path("/usr/local/bin/gateway-node")
 
     @property
     def marker_path(self) -> Path:
@@ -27,7 +27,7 @@ class SystemInstallationRemover:
         self.controller.disable()
         self._remove_path(self.layout.service_file)
         self.controller.daemon_reload()
-        self._remove_path(self.cli_path, expected_target=Path("/opt/mcp-server-gateway/.venv/bin/mcp-gateway"))
+        self._remove_path(self.cli_path, expected_target=Path("/opt/gateway-node/.venv/bin/gateway-node"))
         self._remove_path(self.layout.config_file)
         self._remove_path(self.layout.auth_file)
         self._remove_path(self.layout.auth_lock_file)

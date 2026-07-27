@@ -6,7 +6,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from mcp_gateway.domain.commands import CommandRequest, CommandResult
+from gateway_node.domain.commands import CommandRequest, CommandResult
 
 
 class ExecutionDenied(RuntimeError):

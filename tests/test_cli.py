@@ -1,5 +1,5 @@
-from mcp_gateway.domain.service import CheckResult, DoctorReport, ServiceState, ServiceStatus
-from mcp_gateway.presentation.cli import main
+from gateway_node.domain.service import CheckResult, DoctorReport, ServiceState, ServiceStatus
+from gateway_node.presentation.cli import main
 
 
 class FakeManagement:
@@ -45,7 +45,7 @@ def test_status_command_prints_state(capsys):
 
 
 def test_start_command_prints_idempotent_result(capsys):
-    from mcp_gateway.application.management import ActionResult
+    from gateway_node.application.management import ActionResult
 
     management = FakeManagement(ActionResult(True, False, "service already running"))
     assert main(["start"], management=management) == 0

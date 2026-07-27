@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from mcp_gateway.application.ports import DiagnosticsProvider, InstallationRemover, ServiceController
-from mcp_gateway.domain.service import ActionResult, DoctorReport, ServiceStatus
+from gateway_node.application.ports import DiagnosticsProvider, InstallationRemover, ServiceController
+from gateway_node.domain.service import ActionResult, DoctorReport, ServiceStatus
 
 
 class GatewayManagement:

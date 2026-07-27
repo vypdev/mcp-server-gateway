@@ -12,7 +12,7 @@ from typing import Any, Iterator
 
 import fcntl
 
-from mcp_gateway.application.authentication import IssuedToken, TokenIdentity
+from gateway_node.application.authentication import IssuedToken, TokenIdentity
 
 
 class JsonTokenStore:
